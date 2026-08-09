@@ -65,8 +65,9 @@ temná basa s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí
 hi-hat, melodie s dozvukem a éterický protihlas – táhlá sinusovka bez ostrého
 náběhu, která se pomalu nadechne, plynule překlouže pár sousedních tónů stupnice
 a zase vyhasne, přičemž jí výšku lehce rozechvívá pomalé vibrato. Po nadpoloviční
-části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel s nájezdem. Po smrti se intenzita vrátí na
-začátek – hudba tak přímo odráží, jak se ti daří.
+části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel
+s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
+jak se ti daří.
 
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
 Ztlumení klávesou `M` se pamatuje do příště.
