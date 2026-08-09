@@ -63,12 +63,16 @@ try {
     await page.evaluate(() => navigator.serviceWorker.ready);
     check(true, 'hra se načetla a service worker je aktivní');
 
-    // Úprava levelu se musí projevit hned po reloadu, ne až po zvýšení verze cache
-    await writeFile(LEVEL, original.replace(/^ {4}108,$/m, '    109,'));
+    // Úprava levelu se musí projevit hned po reloadu, ne až po zvýšení verze cache.
+    // Rychlost si přečteme ze souboru, ať test nezávisí na tom, co je v plánu.
+    const before = original.match(/^ {4}(\d+),$/m);
+    if (!before) throw new Error('v level3.js jsem nenašel rychlost');
+    const bumped = Number(before[1]) + 1;
+    await writeFile(LEVEL, original.replace(before[0], `    ${bumped},`));
     await page.reload();
     await page.waitForFunction(() => !!window.cubeRunner);
     const speed = await page.evaluate(() => window.cubeRunner.levels[2].speed);
-    check(speed === 109, `upravený level3 se načetl aktuální (rychlost ${speed}, čekáno 109)`);
+    check(speed === bumped, `upravený level3 se načetl aktuální (rychlost ${speed}, čekáno ${bumped})`);
     await writeFile(LEVEL, original);
 
     // Offline musí hra pořád fungovat z cache

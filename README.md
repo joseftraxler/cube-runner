@@ -4,15 +4,16 @@ Skákací arkáda ve stylu Geometry Dash napsaná v čistém JavaScriptu (ES mod
 která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez build kroku.
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
-10 úrovní (každá zhruba na půl minuty) s rostoucí rychlostí a přibývajícími
-překážkami – hroty, propasti, plovoucí plošiny, hroty visící ze stropu, pily,
-odrazové plošiny, skokové prstence i obrácenou gravitaci.
+10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, nízké stropy,
+odrazové plošiny, skokové prstence, obrácená gravitace – a s rostoucí rychlostí
+i hustotou překážek. Poslední úroveň běží o polovinu rychleji než první a je
+skoro dvakrát delší.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory.
 
 **▶️ Zahrát online: <https://joseftraxler.github.io/cube-runner/>**
 
-![Náhled hry Cube Runner – 5. úroveň, kostka běží po plošině nad hroty](docs/preview.png)
+![Náhled hry Cube Runner – 6. úroveň, kostka přeskakuje odrazovou plošinu pod visícími hroty](docs/preview.png)
 
 ## Ovládání
 
@@ -46,6 +47,8 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 | Skokový prstenec     | Ve vzduchu z něj jde na stisk skočit znovu. Jednou za pokus.          |
 | Gravitační portál    | Otočí gravitaci – kostka spadne na strop a běží po něm hlavou dolů.   |
 | Mince                | Bonusové body, sbírání je nepovinné.                                  |
+| Rozcestí             | Dvě cesty vedle sebe: dole se jen skáče, nahoře jsou mince navíc.     |
+| Past                 | Odrazová plošina pod visícími hroty – kdo na ni šlápne, je vymrštěn do nich. Musí se přeskočit. |
 
 Skok je vždycky stejně vysoký: vyskočí na blok vysoký **2 políčka** a přeskočí
 díru širokou **4 políčka**. S vyšší rychlostí úrovně se skok neprodlužuje do výšky,
@@ -59,9 +62,10 @@ harmonii i tempo odvozené od své rychlosti, takže s obtížností roste i tah
 
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
 temná basa s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
-hi-hat a melodie s dozvukem, po nadpoloviční části se přidá arpeggio a filtr se
-otevře naplno. Každý přechod podtrhne činel s nájezdem. Po smrti se intenzita
-vrátí na začátek – hudba tak přímo odráží, jak se ti daří.
+hi-hat, melodie s dozvukem a občasný klouzavý synťák, který přejede pár tónů
+v úzkém rozpětí, a po nadpoloviční části se přidá arpeggio a filtr se otevře
+naplno. Každý přechod podtrhne činel s nájezdem. Po smrti se intenzita vrátí na
+začátek – hudba tak přímo odráží, jak se ti daří.
 
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
 Ztlumení klávesou `M` se pamatuje do příště.

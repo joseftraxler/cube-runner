@@ -90,6 +90,11 @@ prázdno; hra pak kreslí jen využitou část mapy (kvůli přiblížení obraz
 
 Mapy staví generátor `tools/gen_levels.py` (`python3 tools/gen_levels.py`) – skládá
 je z pojmenovaných úseků (`PATTERNS`) podle `LEVEL_PLAN` a přepíše `js/levels/*.js`.
+Každá úroveň má v plánu **vlastní téma** (propasti, plošiny, pily, stropy,
+odrazové plošiny, prstence, gravitace), ať se levely navzájem nepodobají.
+Hustotu řídí šířka oddechu mezi úseky: `flat` (8 políček) na klid, `flat4` (4) tam,
+kde mají překážky navazovat. Úseky samotné mají okraje co nejužší – prázdno
+uvnitř úseku se sčítá s oddechem a level pak působí prázdně.
 Standardní cesta k úpravě levelu je **změnit úsek nebo plán** a generátor pustit
 znovu (je idempotentní).
 
@@ -128,6 +133,8 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
+- Klouzavý synťák (`#slide`) hraje jen v pár taktech ze smyčky – je to
+  ozvláštnění, ne podklad; kdyby jel pořád, přebil by melodii.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.
