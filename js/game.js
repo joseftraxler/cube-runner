@@ -3,12 +3,16 @@ import {Player} from "./entities/player.js";
 import {Saw, SAW_RADIUS} from "./entities/saw.js";
 import {BASE_SPEED, CUBE, HIT, PAD_BOOST} from "./physics.js";
 import {buildKeyMap, actionForEvent} from "./input.js";
+import {Sound} from "./audio.js";
 
 // Výška horního pruhu s ukazatelem postupu a statistikami (px)
 const HUD = 54;
 
 // Minimální počet políček viditelných na šířku – aby šlo reagovat na překážky
 const MIN_VIEW_TILES = 18;
+
+// Šířka rohu vpravo nahoře, kterým se ťuknutím přepíná zvuk (px)
+const MUTE_ZONE = 44;
 
 export class Game {
     constructor(canvas, levels, controls) {
@@ -28,6 +32,7 @@ export class Game {
         this.clock = 0;         // běží pořád, pro animace pozadí a překážek
         this.holdJump = false;  // drží hráč tlačítko skoku? (GD: drženým skáče dál)
         this.particles = [];
+        this.sound = new Sound();
 
         this.loadLevel();
         this.bindInput();
@@ -53,6 +58,9 @@ export class Game {
         this.progress = 0;
         this.particles.length = 0;
         this.camX = 0;
+        this.padKey = null;     // odrazová plošina, na které kostka právě stojí
+
+        this.sound.setTrack(this.levelIndex, this.level.speed);
 
         if (this.tile) this.resize();
     }
@@ -81,6 +89,14 @@ export class Game {
      * dotyk i myš. Nové vstupy směruj sem, ať se logika neduplikuje.
      */
     handleAction(action) {
+        // Zvuk smí naběhnout až po interakci uživatele (autoplay policy)
+        this.sound.unlock();
+
+        if (action === 'mute') {
+            this.sound.toggleMute();
+            return;
+        }
+
         if (action === 'restart') {
             if (this.state === 'playing' || this.state === 'paused') this.retry();
             return;
@@ -118,13 +134,15 @@ export class Game {
 
     // Dotyk i myš: v horním pruhu = pauza, jinde = skok (držením se skáče dál)
     bindPointer() {
-        const press = (clientY) => {
-            this.handleAction(clientY < HUD ? 'pause' : 'jump');
+        const press = (clientX, clientY) => {
+            if (clientY >= HUD) return this.handleAction('jump');
+            // pravý roh pruhu = zvuk, zbytek pruhu = pauza
+            this.handleAction(clientX > this.c.width - MUTE_ZONE * 1.5 ? 'mute' : 'pause');
         };
 
         this.c.addEventListener('touchstart', e => {
             e.preventDefault();
-            press(e.changedTouches[0].clientY);
+            press(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
         }, {passive: false});
 
         this.c.addEventListener('touchmove', e => e.preventDefault(), {passive: false});
@@ -134,7 +152,7 @@ export class Game {
             this.handleRelease('jump');
         }, {passive: false});
 
-        this.c.addEventListener('mousedown', e => press(e.clientY));
+        this.c.addEventListener('mousedown', e => press(e.clientX, e.clientY));
         window.addEventListener('mouseup', () => this.handleRelease('jump'));
     }
 
@@ -142,6 +160,7 @@ export class Game {
     tryJump() {
         if (this.player.onGround) {
             this.player.jump();
+            this.sound.play('jump');
             return;
         }
 
@@ -149,6 +168,7 @@ export class Game {
         if (ring) {
             this.usedRings.add(ring);
             this.player.jump();
+            this.sound.play('ring');
         }
     }
 
@@ -177,6 +197,7 @@ export class Game {
     }
 
     die() {
+        this.sound.play('death');
         this.spawnExplosion();
         this.state = 'dying';
         this.stateTimer = 0.75;
@@ -200,6 +221,7 @@ export class Game {
 
         this.update(dt);
         this.render();
+        this.sound.setMusicOn(this.state === 'playing');
 
         requestAnimationFrame(t => this.loop(t));
     }
@@ -222,7 +244,10 @@ export class Game {
         if (this.state !== 'playing') return;
 
         // Držené tlačítko skáče znovu hned po dopadu (jako v Geometry Dash)
-        if (this.holdJump && this.player.onGround) this.player.jump();
+        if (this.holdJump && this.player.onGround) {
+            this.player.jump();
+            this.sound.play('jump');
+        }
 
         this.player.step(dt);
 
@@ -248,6 +273,7 @@ export class Game {
             this.best = 1;
             this.score += 1000;
             this.state = (this.levelIndex >= this.levels.length - 1) ? 'won' : 'levelComplete';
+            this.sound.play(this.state === 'won' ? 'win' : 'complete');
         }
 
         this.updateCamera();
@@ -281,23 +307,32 @@ export class Game {
 
     // Odrazové plošiny a gravitační portály – hra mění stav kostky, ne naopak
     applyTriggers() {
+        let pad = null;
+
         for (const {x, y} of this.nearbyTiles()) {
             const trigger = this.level.triggerAt(x, y);
             if (!trigger || !this.overlaps(CUBE, x, y, x + 1, y + 1)) continue;
 
             switch (trigger) {
                 case 'pad':
+                    pad = `${x},${y}`;
                     this.player.jump(PAD_BOOST);
                     break;
                 case 'gravityDown':
-                    this.player.gravity = 1;
+                case 'gravityUp': {
+                    const gravity = trigger === 'gravityUp' ? -1 : 1;
+                    // Portál se drží stisknutý celý průlet – zvuk jen při změně
+                    if (this.player.gravity !== gravity) this.sound.play('portal');
+                    this.player.gravity = gravity;
                     break;
-                case 'gravityUp':
-                    this.player.gravity = -1;
-                    break;
+                }
                 // 'ring' se aktivuje až stiskem – viz tryJump()
             }
         }
+
+        // Plošina odrazí kostku každý snímek dotyku, zaznít má ale jen jednou
+        if (pad && pad !== this.padKey) this.sound.play('pad');
+        this.padKey = pad;
     }
 
     // Klíč nevyužitého prstence, se kterým se kostka právě překrývá (nebo null)
@@ -318,6 +353,7 @@ export class Game {
                 this.level.takeCoin(x, y)) {
                 this.coins++;
                 this.score += 100;
+                this.sound.play('coin');
             }
         }
     }
@@ -654,8 +690,14 @@ export class Game {
         ctx.textAlign = 'right';
         ctx.fillText(
             `POKUS ${this.attempts} · 🪙 ${this.coins}/${this.level.coinCount} · ${this.score}`,
-            this.c.width - pad, barY + barH + 6
+            this.c.width - pad - MUTE_ZONE, barY + barH + 6
         );
+
+        // Stav zvuku – na dotykových zařízeních je to zároveň tlačítko
+        ctx.textAlign = 'right';
+        ctx.globalAlpha = this.sound.muted ? 0.5 : 1;
+        ctx.fillText(this.sound.muted ? '🔇' : '🔊', this.c.width - pad, barY + barH + 6);
+        ctx.globalAlpha = 1;
     }
 
     drawOverlay() {
@@ -666,7 +708,7 @@ export class Game {
         switch (this.state) {
             case 'ready':
                 title = `LEVEL ${this.levelIndex + 1}`;
-                subtitle = 'Mezerník / ťuknutí = skok · P = pauza · R = restart';
+                subtitle = 'Mezerník / ťuknutí = skok · P = pauza · R = restart · M = zvuk';
                 break;
             case 'paused':
                 title = 'PAUZA';

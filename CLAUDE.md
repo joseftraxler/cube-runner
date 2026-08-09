@@ -22,6 +22,7 @@ levelů se má pustit**:
 python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely doběhnout
 node tools/playtest.mjs               # projde všech 10 levelů v Chromiu (potřebuje playwright)
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
+node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
 ```
 
 ## Architektura a klíčový princip
@@ -40,13 +41,13 @@ node tools/swtest.mjs                 # ověří service worker (offline vs. akt
   nezávislost `draw` na hře zachovej.
 
 Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
-`input.js` (mapování kláves na akce), `scripts.js` (bootstrap – canvas, seznam
-levelů, ovládání, spuštění).
+`input.js` (mapování kláves na akce), `audio.js` (zvuk), `scripts.js` (bootstrap –
+canvas, seznam levelů, ovládání, spuštění).
 
 ## Ovládání
 
 Klávesy, dotyk i myš vedou do jedné metody `Game.handleAction(action)` (action =
-`jump`/`pause`/`restart`), puštění tlačítka do `Game.handleRelease(action)`.
+`jump`/`pause`/`restart`/`mute`), puštění tlačítka do `Game.handleRelease(action)`.
 Klávesnice mapuje přes `input.js`, dotyk a myš řeší `Game.bindPointer`. Nové vstupy
 směruj taky tam, ať se logika neduplikuje.
 
@@ -115,6 +116,23 @@ když se rozejdou, playtest spadne.
 2. Spusť generátor – vznikne `js/levels/levelX.js`.
 3. Naimportuj a přidej do pole `levels` v `js/scripts.js`. Pořadí = pořadí ve hře.
 4. Přidej soubor do `ASSETS` v `sw.js`.
+
+## Zvuk
+
+`js/audio.js` (třída `Sound`) skládá efekty i hudbu za běhu přes Web Audio API –
+**žádné zvukové soubory**, ať zůstane hra bez závislostí a repozitář bez binárek.
+Vazba je stejná jako u entit: `Game` zvuku říká, co se stalo (`play('jump')`)
+a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
+
+- AudioContext smí vzniknout **až po interakci uživatele** – proto se `unlock()`
+  volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
+- Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
+  ne v herní smyčce – jinak by při propadu snímků vynechávala.
+- `Game.loop` každý snímek nastaví `setMusicOn(state === 'playing')`; stav hudby
+  se tak neroztahuje po celém kódu. `setTrack` v `loadLevel` vrací skladbu na
+  začátek, takže po smrti hraje znovu od začátku.
+- Ztlumení se pamatuje v `localStorage` a je řešené hlasitostí (ne přeskočením
+  kódu), aby se i ztlumeně pořád testovaly stejné cesty.
 
 ## PWA / offline
 

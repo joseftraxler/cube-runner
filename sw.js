@@ -1,7 +1,7 @@
 // Service worker pro PWA – hra funguje offline a jde nainstalovat.
 // Cesty jsou relativní ke scope (umístění tohoto souboru).
 const PREFIX = 'cube-runner-';
-const CACHE = PREFIX + 'v2';
+const CACHE = PREFIX + 'v3';
 
 const ASSETS = [
     './',
@@ -12,6 +12,7 @@ const ASSETS = [
     './js/scripts.js',
     './js/game.js',
     './js/level.js',
+    './js/audio.js',
     './js/physics.js',
     './js/input.js',
     './js/entities/entity.js',

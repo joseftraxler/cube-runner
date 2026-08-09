@@ -29,6 +29,7 @@ const controls = {
     'jump': ['space', 'arrowUp', 'keyW', 'enter'],
     'pause': ['escape', 'keyP'],
     'restart': ['keyR'],
+    'mute': ['keyM'],
 };
 
 // Instance je dostupná i z konzole prohlížeče – hodí se na ladění

@@ -6,6 +6,8 @@ která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
 10 úrovní s rostoucí rychlostí a přibývajícími překážkami – hroty, propasti,
 plošiny, pily, odrazové plošiny, skokové prstence i obrácenou gravitaci.
+Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
+nepotřebuje žádné zvukové soubory.
 
 **▶️ Zahrát online: <https://joseftraxler.github.io/cube-runner/>**
 
@@ -18,6 +20,7 @@ plošiny, pily, odrazové plošiny, skokové prstence i obrácenou gravitaci.
 | Skok                          | `mezerník`, `↑`, `W` nebo `Enter`| ťuknutí kamkoli do hry    |
 | Pauza                         | `P` nebo `Esc`                   | ťuknutí do horního pruhu  |
 | Restart úrovně                | `R`                              | –                         |
+| Zvuk zapnout / vypnout        | `M`                              | ťuknutí na ikonu vpravo nahoře |
 | Start / pokračování           | `mezerník`                       | ťuknutí                   |
 
 Tlačítko skoku se dá **držet** – kostka pak vyskočí znovu hned, jak dopadne.
@@ -46,6 +49,17 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 Skok je vždycky stejně vysoký: vyskočí na blok vysoký **2 políčka** a přeskočí
 díru širokou **4 políčka**. S vyšší rychlostí úrovně se skok neprodlužuje do výšky,
 ale doletí dál – a času na reakci je míň.
+
+## Zvuk
+
+Hra nepoužívá žádné zvukové soubory – **efekty i hudba se skládají za běhu**
+přes Web Audio API (oscilátory a šum). Hudba je krokový sekvencer: basa, melodie
+a bicí, přičemž každá úroveň má vlastní stupnici, harmonii i tempo odvozené od
+své rychlosti. Melodie se losuje ze seedu podle čísla levelu, takže je pokaždé
+stejná. Po smrti se skladba spustí od začátku.
+
+Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
+Ztlumení klávesou `M` se pamatuje do příště.
 
 ## Spuštění
 
@@ -83,6 +97,7 @@ js/
 ├── scripts.js          bootstrap – canvas, ovládání, seznam levelů, spuštění hry
 ├── game.js             Game – herní smyčka, stavy, kolize s překážkami, vykreslování
 ├── level.js            Level – parsování mapy a rychlosti
+├── audio.js            Sound – syntéza zvukových efektů a hudby (Web Audio)
 ├── physics.js          fyzikální konstanty (gravitace, skok, velikost kostky)
 ├── input.js            mapování kláves na akce
 ├── entities/
@@ -94,6 +109,8 @@ js/
 tools/
 ├── gen_levels.py       generátor úrovní + ověření průchodnosti simulací
 ├── playtest.mjs        automatické projití všech levelů v prohlížeči
+├── swtest.mjs          test service workeru (offline vs. aktuálnost souborů)
+├── audiotest.mjs       test zvuku (měří signál na výstupu hry)
 └── screenshot.mjs      náhled hry do README
 ```
 
@@ -177,6 +194,7 @@ v opravdovém prohlížeči a vyrobit náhled:
 ```bash
 node tools/playtest.mjs               # projde všech 10 levelů skutečným kódem hry
 node tools/swtest.mjs                 # ověří chování service workeru (offline vs. aktuálnost)
+node tools/audiotest.mjs              # ověří, že z hry opravdu leze zvuk
 node tools/screenshot.mjs             # přegeneruje docs/preview.png
 ```
 
