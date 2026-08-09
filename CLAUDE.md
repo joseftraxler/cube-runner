@@ -133,8 +133,10 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
-- Klouzavý synťák (`#slide`) hraje jen v pár taktech ze smyčky – je to
-  ozvláštnění, ne podklad; kdyby jel pořád, přebil by melodii.
+- Protihlas k base (`#counter`) hraje na kroky `COUNTER_STEPS`, tedy mezi doby
+  hlavní basy, o oktávu výš a po sousedních tónech stupnice – aby se s basou
+  doplňoval, ne aby hrál totéž. Nikdy nejde ve dvou taktech po sobě; je to
+  odpověď, ne další podklad.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.

@@ -6,7 +6,7 @@
  * Hudba je krokový sekvencer: 16 kroků na takt, harmonie se točí po osmi taktech.
  * Neroste ale s časem, nýbrž **s postupem v levelu** (`setIntensity`) – čím dál
  * kostka doběhne, tím je skladba plnější: nejdřív jen basa s kopákem, pak
- * naskočí virbl, melodie s dozvukem a občasný klouzavý synťák, nakonec arpeggio,
+ * naskočí virbl, melodie s dozvukem a protihlas k base, nakonec arpeggio,
  * otevřené hi-hat a naplno otevřený filtr. Přechod mezi stupni podtrhne činel s nájezdem.
  * Po smrti se intenzita vrátí na začátek, takže hudba přímo odráží, jak se daří.
  *
@@ -55,8 +55,9 @@ const PROGRESSIONS = [
     [0, 5, 3, 10, 0, 5, 8, 7],
 ];
 
-// Kroky v taktu, na kterých smí začít klouzavý synťák
-const SLIDE_STEPS = [0, 6, 10];
+// Kroky v taktu, na kterých hraje protihlas. Basa jde po osminách (sudé kroky),
+// protihlas mezi ně – dohromady se prokládají, místo aby hrály totéž.
+const COUNTER_STEPS = [3, 7, 13];
 
 // Základní tón levelu (půltóny od A1 = 55 Hz)
 const ROOTS = [0, 3, 5, 7, 10];
@@ -193,24 +194,28 @@ export class Sound {
         // Rychlejší level = svižnější hudba (tempo roste s obtížností)
         const stepDur = 60 / (122 * speedPct / 100) / 4;
 
-        // Klouzavý synťák: pro každý takt se předem rozhodne, jestli a odkud
-        // kam přejede. Hraje jen občas, aby zůstal ozvláštněním, ne podkladem.
-        const slides = [];
+        // Protihlas: krátká basová fráze, která se pohybuje po sousedních tónech
+        // stupnice. Nikdy ve dvou taktech po sobě – má to být odpověď base,
+        // ne další podklad.
+        const counters = [];
+        let previous = false;
         for (let bar = 0; bar < BARS; bar++) {
-            if (random() < 0.62) {
-                slides.push(null);      // většinu taktů mlčí, ať zůstane ozvláštněním
+            const play = !previous && random() < 0.5;
+            previous = play;
+
+            if (!play) {
+                counters.push(null);
                 continue;
             }
-            const from = scale[Math.floor(random() * scale.length)];
-            // Cíl je blízký tón ze stupnice – přejezd v úzkém rozpětí
-            const step = scale[Math.floor(random() * scale.length)];
-            const near = Math.abs(step - from) <= 5 && step !== from;
-            const to = near ? step : from + (random() < 0.5 ? 3 : -2);
-            slides.push({
-                from, to,
-                start: SLIDE_STEPS[Math.floor(random() * SLIDE_STEPS.length)],
-                bars: random() < 0.35 ? 2 : 1,
-            });
+
+            let index = Math.floor(random() * scale.length);
+            counters.push(COUNTER_STEPS.map(() => {
+                // Na kraji stupnice se odrazí, ať fráze nezůstane stát na jednom tónu
+                index += random() < 0.5 ? 1 : -1;
+                if (index < 0) index = 1;
+                if (index >= scale.length) index = scale.length - 2;
+                return scale[index];
+            }));
         }
 
         this.track = {
@@ -218,7 +223,7 @@ export class Sound {
             prog: PROGRESSIONS[levelIndex % PROGRESSIONS.length],
             stepDur,
             melody,
-            slides,
+            counters,
         };
 
         // Dozvuk na tečkovanou osminku, ať se drží tempa
@@ -301,13 +306,14 @@ export class Sound {
             });
         }
 
-        // ---- klouzavý synťák: občasný přejezd mezi dvěma blízkými tóny ----
-        const slide = t.slides[bar];
-        if (slide && tier >= 1 && inBar === slide.start) {
-            this.#slide(
-                root * 2 * semitone(slide.from),
-                root * 2 * semitone(slide.to),
-                t.stepDur * STEPS_PER_BAR * slide.bars * 0.75,
+        // ---- protihlas: basová fráze proložená mezi doby hlavní basy ----
+        const counter = t.counters[bar];
+        const beat = counter ? COUNTER_STEPS.indexOf(inBar) : -1;
+        if (tier >= 1 && beat >= 0) {
+            this.#counter(
+                root * 2 * semitone(counter[beat]),
+                beat > 0 ? root * 2 * semitone(counter[beat - 1]) : null,
+                t.stepDur * 1.9,
                 when,
             );
         }
@@ -416,35 +422,35 @@ export class Sound {
     }
 
     /**
-     * Synťák, který plynule přejede z jednoho tónu na druhý. Jde přes rezonanční
-     * dolní propust, která se sama otevře a zase zavře – proto to „zakvílí“
-     * a nezůstane to jen u změny výšky.
+     * Protihlas k base: dvě rozladěné pily jako u basy, ale o oktávu výš a přes
+     * teplejší filtr. Z předchozího tónu se sem krátce přejede, takže se linka
+     * posouvá po tónech místo skákání – proto ten „synťákový“ dojem.
      */
-    #slide(from, to, dur, when) {
-        const osc = this.ctx.createOscillator();
+    #counter(freq, from, dur, when) {
         const filter = this.ctx.createBiquadFilter();
         const env = this.ctx.createGain();
 
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(from, when);
-        // Přejezd začne až po chvilce, ať je slyšet výchozí tón
-        osc.frequency.setValueAtTime(from, when + dur * 0.25);
-        osc.frequency.exponentialRampToValueAtTime(to, when + dur * 0.8);
-
         filter.type = 'lowpass';
-        filter.Q.value = 9;
-        filter.frequency.setValueAtTime(from * 2, when);
-        filter.frequency.exponentialRampToValueAtTime(Math.max(to, from) * 6, when + dur * 0.6);
-        filter.frequency.exponentialRampToValueAtTime(from * 1.5, when + dur);
+        filter.Q.value = 2.5;
+        filter.frequency.setValueAtTime(freq * 3.5, when);
+        filter.frequency.exponentialRampToValueAtTime(freq * 1.5, when + dur);
 
         env.gain.setValueAtTime(0.0001, when);
-        env.gain.exponentialRampToValueAtTime(0.075, when + dur * 0.3);
-        env.gain.setValueAtTime(0.075, when + dur * 0.7);
+        env.gain.exponentialRampToValueAtTime(0.16, when + 0.02);
         env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
 
-        osc.connect(filter).connect(env).connect(this.leadGain);
-        osc.start(when);
-        osc.stop(when + dur + 0.05);
+        filter.connect(env).connect(this.musicGain);
+
+        for (const detune of [-6, 6]) {
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.detune.value = detune;
+            osc.frequency.setValueAtTime(from ?? freq, when);
+            if (from) osc.frequency.exponentialRampToValueAtTime(freq, when + dur * 0.25);
+            osc.connect(filter);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        }
     }
 
     /** Šumový úder (bicí, výbuch) přes filtr. */
