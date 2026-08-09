@@ -6,8 +6,8 @@
  * Hudba je krokový sekvencer: 16 kroků na takt, harmonie se točí po osmi taktech.
  * Neroste ale s časem, nýbrž **s postupem v levelu** (`setIntensity`) – čím dál
  * kostka doběhne, tím je skladba plnější: nejdřív jen basa s kopákem, pak
- * naskočí virbl, melodie s dozvukem a protihlas k base, nakonec arpeggio,
- * otevřené hi-hat a naplno otevřený filtr. Přechod mezi stupni podtrhne činel s nájezdem.
+ * naskočí virbl, melodie s dozvukem a éterický protihlas k base, nakonec
+ * arpeggio, otevřené hi-hat a naplno otevřený filtr. Přechod mezi stupni podtrhne činel s nájezdem.
  * Po smrti se intenzita vrátí na začátek, takže hudba přímo odráží, jak se daří.
  *
  * (Kdyby gradace běžela na čas, nebyla by v praxi slyšet – po většinu pokusů
@@ -55,9 +55,14 @@ const PROGRESSIONS = [
     [0, 5, 3, 10, 0, 5, 8, 7],
 ];
 
-// Kroky v taktu, na kterých hraje protihlas. Basa jde po osminách (sudé kroky),
-// protihlas mezi ně – dohromady se prokládají, místo aby hrály totéž.
-const COUNTER_STEPS = [3, 7, 13];
+// Kdy v taktu začne protihlas a jak dlouho (v krocích) se táhne. Basa jde po
+// osminách, tenhle hlas přes ně v jednom kuse klouže – doplňují se, ne zdvojují.
+const COUNTER_START = 2;
+const COUNTER_STEPS = 12;
+
+// Jemné chvění výšky protihlasu – právě ono dělá ten „strašidelný“ dojem
+const VIBRATO_HZ = 5.2;
+const VIBRATO_CENTS = 14;
 
 // Základní tón levelu (půltóny od A1 = 55 Hz)
 const ROOTS = [0, 3, 5, 7, 10];
@@ -194,9 +199,9 @@ export class Sound {
         // Rychlejší level = svižnější hudba (tempo roste s obtížností)
         const stepDur = 60 / (122 * speedPct / 100) / 4;
 
-        // Protihlas: krátká basová fráze, která se pohybuje po sousedních tónech
-        // stupnice. Nikdy ve dvou taktech po sobě – má to být odpověď base,
-        // ne další podklad.
+        // Protihlas: fráze ze tří sousedních tónů stupnice, kterou pak jeden
+        // táhlý hlas plynule projede. Nikdy ve dvou taktech po sobě – má to
+        // být odpověď base, ne další podklad.
         const counters = [];
         let previous = false;
         for (let bar = 0; bar < BARS; bar++) {
@@ -209,7 +214,7 @@ export class Sound {
             }
 
             let index = Math.floor(random() * scale.length);
-            counters.push(COUNTER_STEPS.map(() => {
+            counters.push([0, 1, 2].map(() => {
                 // Na kraji stupnice se odrazí, ať fráze nezůstane stát na jednom tónu
                 index += random() < 0.5 ? 1 : -1;
                 if (index < 0) index = 1;
@@ -306,14 +311,12 @@ export class Sound {
             });
         }
 
-        // ---- protihlas: basová fráze proložená mezi doby hlavní basy ----
+        // ---- protihlas: jeden táhlý hlas, který přes takt překlouže pár tónů ----
         const counter = t.counters[bar];
-        const beat = counter ? COUNTER_STEPS.indexOf(inBar) : -1;
-        if (tier >= 1 && beat >= 0) {
+        if (tier >= 1 && counter && inBar === COUNTER_START) {
             this.#counter(
-                root * 2 * semitone(counter[beat]),
-                beat > 0 ? root * 2 * semitone(counter[beat - 1]) : null,
-                t.stepDur * 1.9,
+                counter.map(note => root * 4 * semitone(note)),
+                t.stepDur * COUNTER_STEPS,
                 when,
             );
         }
@@ -422,35 +425,45 @@ export class Sound {
     }
 
     /**
-     * Protihlas k base: dvě rozladěné pily jako u basy, ale o oktávu výš a přes
-     * teplejší filtr. Z předchozího tónu se sem krátce přejede, takže se linka
-     * posouvá po tónech místo skákání – proto ten „synťákový“ dojem.
+     * Protihlas k base. Čistá sinusovka bez vyšších harmonických, která se
+     * pomalu nadechne, plynule překlouže zadané tóny a zase vyhasne. Výšku jí
+     * lehce rozechvívá pomalé vibrato – dohromady je to ten éterický, „duchařský“
+     * zvuk. Schválně nemá ostrý náběh ani rezonanci: nemá řezat přes hudbu,
+     * ale ležet pod ní.
      */
-    #counter(freq, from, dur, when) {
-        const filter = this.ctx.createBiquadFilter();
+    #counter(freqs, dur, when) {
+        const osc = this.ctx.createOscillator();
         const env = this.ctx.createGain();
 
-        filter.type = 'lowpass';
-        filter.Q.value = 2.5;
-        filter.frequency.setValueAtTime(freq * 3.5, when);
-        filter.frequency.exponentialRampToValueAtTime(freq * 1.5, when + dur);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freqs[0], when);
+
+        // Přejezdy jsou rozložené tak, aby všechny tóny zazněly ještě než hlas
+        // začne doznívat – výška se přitom nikde nezlomí
+        const leg = 0.7 / Math.max(freqs.length - 1, 1);
+        freqs.slice(1).forEach((freq, i) => {
+            osc.frequency.exponentialRampToValueAtTime(freq, when + dur * leg * (i + 1));
+        });
+
+        // Vibrato náběhne až po nádechu, ať je nástup čistý
+        const lfo = this.ctx.createOscillator();
+        const depth = this.ctx.createGain();
+        lfo.frequency.value = VIBRATO_HZ;
+        depth.gain.setValueAtTime(0, when);
+        depth.gain.linearRampToValueAtTime(VIBRATO_CENTS, when + dur * 0.4);
+        lfo.connect(depth).connect(osc.detune);
 
         env.gain.setValueAtTime(0.0001, when);
-        env.gain.exponentialRampToValueAtTime(0.16, when + 0.02);
-        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        env.gain.exponentialRampToValueAtTime(0.13, when + dur * 0.3);   // pomalý nádech
+        env.gain.setValueAtTime(0.13, when + dur * 0.7);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);       // a vyhasnutí
 
-        filter.connect(env).connect(this.musicGain);
-
-        for (const detune of [-6, 6]) {
-            const osc = this.ctx.createOscillator();
-            osc.type = 'sawtooth';
-            osc.detune.value = detune;
-            osc.frequency.setValueAtTime(from ?? freq, when);
-            if (from) osc.frequency.exponentialRampToValueAtTime(freq, when + dur * 0.25);
-            osc.connect(filter);
-            osc.start(when);
-            osc.stop(when + dur + 0.02);
-        }
+        // Přes leadGain, takže se hlas nese i do dozvuku a má kolem sebe prostor
+        osc.connect(env).connect(this.leadGain);
+        osc.start(when);
+        osc.stop(when + dur + 0.05);
+        lfo.start(when);
+        lfo.stop(when + dur + 0.05);
     }
 
     /** Šumový úder (bicí, výbuch) přes filtr. */
