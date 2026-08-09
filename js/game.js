@@ -222,6 +222,8 @@ export class Game {
         this.update(dt);
         this.render();
         this.sound.setMusicOn(this.state === 'playing');
+        // Hudba houstne s tím, jak daleko se kostka dostala
+        this.sound.setIntensity(this.state === 'playing' ? this.progress : 0);
 
         requestAnimationFrame(t => this.loop(t));
     }

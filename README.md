@@ -4,8 +4,9 @@ Skákací arkáda ve stylu Geometry Dash napsaná v čistém JavaScriptu (ES mod
 která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez build kroku.
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
-10 úrovní s rostoucí rychlostí a přibývajícími překážkami – hroty, propasti,
-plošiny, pily, odrazové plošiny, skokové prstence i obrácenou gravitaci.
+10 úrovní (každá zhruba na půl minuty) s rostoucí rychlostí a přibývajícími
+překážkami – hroty, propasti, plovoucí plošiny, hroty visící ze stropu, pily,
+odrazové plošiny, skokové prstence i obrácenou gravitaci.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory.
 
@@ -53,10 +54,14 @@ ale doletí dál – a času na reakci je míň.
 ## Zvuk
 
 Hra nepoužívá žádné zvukové soubory – **efekty i hudba se skládají za běhu**
-přes Web Audio API (oscilátory a šum). Hudba je krokový sekvencer: basa, melodie
-a bicí, přičemž každá úroveň má vlastní stupnici, harmonii i tempo odvozené od
-své rychlosti. Melodie se losuje ze seedu podle čísla levelu, takže je pokaždé
-stejná. Po smrti se skladba spustí od začátku.
+přes Web Audio API (oscilátory a šum). Každá úroveň má vlastní mollovou stupnici,
+harmonii i tempo odvozené od své rychlosti, takže s obtížností roste i tah hudby.
+
+Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
+temná basa s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
+hi-hat a melodie s dozvukem, po nadpoloviční části se přidá arpeggio a filtr se
+otevře naplno. Každý přechod podtrhne činel s nájezdem. Po smrti se intenzita
+vrátí na začátek – hudba tak přímo odráží, jak se ti daří.
 
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
 Ztlumení klávesou `M` se pamatuje do příště.

@@ -128,6 +128,9 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
+- Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
+  Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
+  stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.
 - `Game.loop` každý snímek nastaví `setMusicOn(state === 'playing')`; stav hudby
   se tak neroztahuje po celém kódu. `setTrack` v `loadLevel` vrací skladbu na
   začátek, takže po smrti hraje znovu od začátku.
