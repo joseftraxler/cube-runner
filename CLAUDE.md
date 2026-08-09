@@ -21,6 +21,7 @@ levelů se má pustit**:
 ```bash
 python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely doběhnout
 node tools/playtest.mjs               # projde všech 10 levelů v Chromiu (potřebuje playwright)
+node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 ```
 
 ## Architektura a klíčový princip
@@ -88,7 +89,13 @@ prázdno; hra pak kreslí jen využitou část mapy (kvůli přiblížení obraz
 
 Mapy staví generátor `tools/gen_levels.py` (`python3 tools/gen_levels.py`) – skládá
 je z pojmenovaných úseků (`PATTERNS`) podle `LEVEL_PLAN` a přepíše `js/levels/*.js`.
-**Levely needituj ručně**, uprav úsek nebo plán a generátor pusť znovu (je idempotentní).
+Standardní cesta k úpravě levelu je **změnit úsek nebo plán** a generátor pustit
+znovu (je idempotentní).
+
+Ručně upravenou mapu ale generátor **nepřepíše**: v hlavičce každého souboru je
+otisk mapy a když nesedí na obsah, soubor se přeskočí (`--force` to vynutí).
+Takový level pak neodpovídá plánu – ověřuj ho přes
+`python3 tools/gen_levels.py --verify js/levels/levelX.js`.
 
 Před zápisem každý level ověří **simulací stejného pohybového modelu**: prohledáním
 najde, jestli existuje posloupnost skoků, která dojde do cíle. Kontroluje se na
@@ -97,6 +104,8 @@ hratelnosti. Když level neprojde, skript skončí chybou a nic nezapíše.
 
 `tools/playtest.mjs` totéž ověří proti opravdovému kódu hry: nechá si od generátoru
 spočítat čísla snímků, ve kterých se má skočit, a odehraje všech 10 levelů v Chromiu.
+Čísla snímků se počítají **z hotových souborů v `js/levels/`**, ne z plánu, takže
+playtest sedí i na ručně upravené mapy.
 Je to zároveň test, že si JS a simulace v Pythonu odpovídají snímek po snímku –
 když se rozejdou, playtest spadne.
 

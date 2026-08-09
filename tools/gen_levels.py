@@ -10,13 +10,16 @@ Konstanty níž musí sedět s `js/physics.js`.
 
 Použití:
     python3 tools/gen_levels.py          # přepíše js/levels/level1..10.js
-    python3 tools/gen_levels.py --check  # jen ověří, nic nezapisuje
+    python3 tools/gen_levels.py --check  # jen ověří plán, nic nezapisuje
+    python3 tools/gen_levels.py --verify js/levels/level3.js   # ověří hotový soubor
 """
 
 import argparse
+import hashlib
 import json
 import math
 import os
+import re
 import sys
 
 # ---- fyzika (kopie js/physics.js) ----
@@ -643,8 +646,10 @@ def solve(rows, speed_pct, dt, press_grid=1, limit=200000):
 # ------------------------------------------------------------------- výstup
 TEMPLATE = '''import {{Level}} from "../level.js";
 
-// první argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED)
-// Soubor generuje tools/gen_levels.py – ruční úpravy přepíše.
+// Soubor generuje tools/gen_levels.py (otisk mapy {digest}).
+// Ruční úpravu generátor podle otisku pozná a soubor nepřepíše;
+// vynutit přegenerování jde přepínačem --force.
+// První argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED).
 const level{n} = new Level(
     {speed},
 {rows}
@@ -654,23 +659,137 @@ export {{level{n}}};
 '''
 
 
+def fingerprint(speed, rows):
+    """Otisk samotné mapy – nemění se přeformátováním komentářů kolem."""
+    data = f'{speed}\n' + '\n'.join(rows)
+    return hashlib.sha1(data.encode('utf-8')).hexdigest()[:8]
+
+
 def js_source(n, speed, rows):
     body = '\n'.join('    "%s",' % r.replace('\\', '\\\\').replace('"', '\\"') for r in rows)
-    return TEMPLATE.format(n=n, speed=speed, rows=body)
+    return TEMPLATE.format(n=n, speed=speed, rows=body, digest=fingerprint(speed, rows))
+
+
+def hand_edited(path):
+    """Byl soubor upraven ručně? (obsah nesedí na otisk v hlavičce)"""
+    if not os.path.exists(path):
+        return False
+    with open(path, encoding='utf-8') as f:
+        src = f.read()
+
+    stamp = re.search(r'otisk mapy ([0-9a-f]{8})', src)
+    if not stamp:
+        return True  # bez otisku nevíme, co v souboru je – radši nepřepisovat
+    try:
+        speed, rows = read_level_js(path)
+    except ValueError:
+        return True
+    return fingerprint(speed, rows) != stamp.group(1)
+
+
+def read_level_js(path):
+    """Vytáhne ze souboru `js/levels/levelX.js` rychlost a řádky mapy."""
+    with open(path, encoding='utf-8') as f:
+        src = f.read()
+
+    call = re.search(r'new\s+Level\s*\((.*?)\n\s*\);', src, re.S)
+    if not call:
+        raise ValueError(f'{path}: nenašel jsem volání new Level(...)')
+
+    body = call.group(1)
+    speed = re.search(r'(\d+)', body)
+    rows = re.findall(r'"((?:[^"\\]|\\.)*)"', body)
+    if not speed or not rows:
+        raise ValueError(f'{path}: nepovedlo se přečíst rychlost nebo řádky mapy')
+
+    return int(speed.group(1)), [r.replace('\\\\', '\\').replace('\\"', '"') for r in rows]
+
+
+def level_files():
+    """Soubory s levely v pořadí level1, level2, … (to, co se opravdu hraje)."""
+    out_dir = os.path.join(ROOT, 'js', 'levels')
+    found = []
+    for name in os.listdir(out_dir):
+        m = re.fullmatch(r'level(\d+)\.js', name)
+        if m:
+            found.append((int(m.group(1)), os.path.join(out_dir, name)))
+    return [path for _, path in sorted(found)]
+
+
+def emit_paths(target):
+    """Vypíše JSON s čísly snímků, ve kterých se má skočit – pro playtest.
+
+    Počítá se z hotových souborů v js/levels/, ne z plánu, aby to sedělo
+    i na ručně upravené mapy.
+    """
+    result = []
+    for i, path in enumerate(level_files(), start=1):
+        speed, rows = read_level_js(path)
+        jumps = solve(rows, speed, 1 / 120, press_grid=4)
+        if jumps is None:
+            print(f'{os.path.basename(path)}: level nejde doběhnout', file=sys.stderr)
+            return 1
+        result.append({'level': i, 'speed': speed, 'dt': 1 / 120, 'jumps': jumps})
+
+    data = json.dumps(result, indent=1)
+    if target == '-':
+        print(data)
+    else:
+        with open(target, 'w', encoding='utf-8') as f:
+            f.write(data)
+    return 0
+
+
+def verify_files(paths):
+    """Ověří průchodnost hotových souborů s levely (i ručně upravených)."""
+    failed = False
+    for path in paths:
+        try:
+            speed, rows = read_level_js(path)
+        except ValueError as e:
+            print(e, file=sys.stderr)
+            failed = True
+            continue
+
+        results = [solve(rows, speed, dt) for dt in CHECK_DTS]
+        fair = solve(rows, speed, 1 / 120, press_grid=4)
+        ok = all(r is not None for r in results) and fair is not None
+        report = ', '.join('ano' if r is not None else 'ne' for r in results)
+        print(f'{os.path.basename(path):<12} rychlost {speed:>3} %  šířka {max(len(r) for r in rows):>3}  '
+              f'{"OK " if ok else "CHYBA"} (dt: {report}; hratelnost: {"ano" if fair is not None else "ne"})')
+        if not ok:
+            failed = True
+
+    if failed:
+        print('\nLevel nejde doběhnout do cíle – uprav mapu.', file=sys.stderr)
+        return 1
+    print('\nVšechny ověřené levely jsou průchozí.')
+    return 0
 
 
 def main():
     parser = argparse.ArgumentParser(description='Vygeneruje a ověří úrovně Cube Runner.')
     parser.add_argument('--check', action='store_true', help='jen ověřit průchodnost, nezapisovat')
+    parser.add_argument('--force', action='store_true',
+                        help='přepsat i levely upravené ručně')
+    parser.add_argument('--verify', nargs='+', metavar='SOUBOR',
+                        help='neověřovat plán, ale hotové soubory js/levels/*.js '
+                             '(hodí se na ručně upravené mapy)')
     parser.add_argument('--paths', metavar='SOUBOR',
                         help='zapíše do JSON souboru ("-" = na výstup) čísla snímků, ve kterých '
                              'se má skočit, aby se level doběhl (vstup pro tools/playtest.mjs)')
     args = parser.parse_args()
 
+    if args.verify:
+        return verify_files(args.verify)
+
+    if args.paths:
+        return emit_paths(args.paths)
+
     out_dir = os.path.join(ROOT, 'js', 'levels')
     os.makedirs(out_dir, exist_ok=True)
     failed = False
-    paths = []
+    skipped = []
 
     for i, (speed, plan) in enumerate(LEVEL_PLAN, start=1):
         rows = build(plan)
@@ -685,17 +804,17 @@ def main():
         report = ', '.join('ano' if r is not None else 'ne' for r in results)
         print(f'level{i:<2} rychlost {speed:>3} %  šířka {width:>3}  {status} '
               f'(dt: {report}; hratelnost: {"ano" if fair is not None else "ne"})',
-              file=sys.stderr if args.paths == '-' else sys.stdout)
+              )
 
         if not ok:
             failed = True
             continue
 
-        # Pro playtest posíláme cestu s hrubým rastrem stisků (nejvíc rezervy)
-        paths.append({'level': i, 'speed': speed, 'dt': 1 / 120, 'jumps': fair})
-
-        if not args.check and not args.paths:
+        if not args.check:
             path = os.path.join(out_dir, f'level{i}.js')
+            if hand_edited(path) and not args.force:
+                skipped.append(os.path.basename(path))
+                continue
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(js_source(i, speed, rows))
 
@@ -703,14 +822,9 @@ def main():
         print('\nNěkterý level nejde doběhnout – uprav PATTERNS nebo LEVEL_PLAN.', file=sys.stderr)
         return 1
 
-    if args.paths:
-        data = json.dumps(paths, indent=1)
-        if args.paths == '-':
-            print(data)
-        else:
-            with open(args.paths, 'w', encoding='utf-8') as f:
-                f.write(data)
-        return 0
+    if skipped:
+        print('\nNepřepsáno (ruční úprava): ' + ', '.join(skipped) +
+              '\nOvěřit je můžeš přes --verify, přepsat přes --force.')
 
     print('\nHotovo.' if not args.check else '\nVšechny úrovně jsou průchozí.')
     return 0

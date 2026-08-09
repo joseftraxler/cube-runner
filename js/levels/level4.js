@@ -1,7 +1,9 @@
 import {Level} from "../level.js";
 
-// první argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED)
-// Soubor generuje tools/gen_levels.py – ruční úpravy přepíše.
+// Soubor generuje tools/gen_levels.py (otisk mapy be2e7401).
+// Ruční úpravu generátor podle otisku pozná a soubor nepřepíše;
+// vynutit přegenerování jde přepínačem --force.
+// První argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED).
 const level4 = new Level(
     112,
     "                                                                                                                                                        ",

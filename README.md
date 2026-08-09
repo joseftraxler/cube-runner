@@ -159,6 +159,14 @@ python3 tools/gen_levels.py           # vygeneruje js/levels/level1..10.js
 python3 tools/gen_levels.py --check   # jen ověří průchodnost, nic nepřepíše
 ```
 
+Level jde upravit i ručně přímo v `js/levels/levelX.js` – generátor pozná podle
+otisku v hlavičce, že do souboru někdo sáhl, a **nepřepíše ho** (`--force` to
+vynutí). Takovou mapu si ověř zvlášť:
+
+```bash
+python3 tools/gen_levels.py --verify js/levels/level3.js
+```
+
 Simulace používá stejný pohybový model jako hra a prohledá všechny možnosti, kdy
 lze skočit. Kromě průchodnosti kontroluje i hratelnost – level musí jít doběhnout
 i tomu, kdo mačká jen 30× za sekundu.
@@ -184,8 +192,8 @@ Pokud se přesto načítá stará verze, bývá to jednou z těchto věcí:
 - **GitHub Pages** posílá u statických souborů `Cache-Control: max-age=600`,
   takže se změna na živé verzi může projevit až za pár minut.
 
-Taky pozor, že soubory v `js/levels/` **přepisuje generátor** – ruční úpravu
-smaže. Když chceš změnit úroveň natrvalo, uprav úsek v `tools/gen_levels.py`.
+Ruční úpravu mapy generátor nepřepíše (viz [Nástroje](#nástroje)), takže o ni
+tímhle způsobem nepřijdeš.
 
 ## Licence
 
