@@ -1,0 +1,20 @@
+
+html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;             /* žádné posouvání stránky na mobilu */
+    background-color: #0b1020;
+    overscroll-behavior: none;
+}
+
+canvas {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;           /* dotyk řeší hra, ne prohlížeč (scroll/zoom) */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}

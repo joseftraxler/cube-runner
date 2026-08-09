@@ -1,0 +1,19 @@
+{
+  "name": "Cube Runner",
+  "short_name": "Cube Runner",
+  "description": "Skákací arkáda ve stylu Geometry Dash – 10 úrovní, ovládání klávesnicí i dotykem.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1020",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
