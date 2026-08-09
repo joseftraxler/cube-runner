@@ -30,6 +30,10 @@ PAD_BOOST = 1.4
 MAX_FALL = 40.0
 CUBE = 0.94
 HIT = 0.58
+SAW_HIT = 0.45 * 0.85
+ORBIT_RADIUS = 1.2      # kopie js/entities/orbiter.js
+ORBIT_SPEED = 2.2
+BALL_HIT = 0.4 * 0.9
 MAX_SUBSTEP = 0.15
 EPS = 1e-6
 
@@ -375,22 +379,23 @@ PATTERNS = {
 #############
 #############
 """),
-    # obrácená gravitace: běh po stropě a zpátky
+    # Obrácená gravitace: portál se dá přeskočit, takže překážky musí být
+    # na obou stranách – kdo se otočí, řeší strop, kdo ne, řeší podlahu.
     'gravity': pattern("""
-##################################
-##################################
-..............vv..........D.......
-..........................D.......
-..................................
-..................................
-..................................
-..................................
-..................................
-..................................
-...U..............................
-...U..............................
-##################################
-##################################
+################################################################
+################################################################
+....................vv..........###.........vv........D.........
+................................###.............................
+................................................................
+................................................................
+................................................................
+................................................................
+................................................................
+................................................................
+................................................................
+......U.......^^..........................^^^.......^^..........
+##########################....##################################
+##########################....##################################
 """),
     # --- úseky podle ručních úprav v levelech 1–3 ---
     # plovoucí plošiny nad hroty – skáče se z jedné na druhou
@@ -733,6 +738,40 @@ PATTERNS = {
 ##########################
 ##########################
 """),
+    # obíhající koule na řetězu – podle fáze buď podběhnout, nebo přeskočit
+    'orbit': pattern("""
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+.......@........
+................
+################
+################
+"""),
+    # dvě koule za sebou, každá v jiné fázi
+    'orbit2': pattern("""
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+......@...........@.......
+..........................
+##########################
+##########################
+"""),
     # cíl
     'finish': pattern("""
 ............
@@ -781,9 +820,9 @@ LEVEL_PLAN = [
            'towers', 'flat', 'finish']),
     # 4 – pily
     (115, ['start', 'flat', 'saw', 'flat4', 'spike2', 'flat4', 'sawair',
-           'flat4', 'spike3', 'flat4', 'sawgap', 'flat4', 'spikecoin',
-           'flat4', 'sawrun', 'flat4', 'pit4', 'flat4', 'saw', 'flat4',
-           'chain', 'flat4', 'sawair', 'flat4', 'spikepair', 'flat4',
+           'flat', 'orbit', 'flat4', 'spike3', 'flat4', 'sawgap', 'flat4',
+           'spikecoin', 'flat4', 'sawrun', 'flat4', 'pit4', 'flat4',
+           'orbit', 'flat4', 'chain', 'flat4', 'spikepair', 'flat4',
            'coinrisk', 'flat', 'finish']),
     # 5 – stropy: skok se zkracuje a visící hroty určují, kde se nesmí
     (120, ['start', 'flat', 'ceiling', 'flat4', 'spike2', 'flat4', 'hangers',
@@ -800,8 +839,8 @@ LEVEL_PLAN = [
     # 7 – prstence a široké propasti
     (130, ['start', 'flat', 'ring', 'flat4', 'pit4', 'flat4', 'spike3',
            'flat4', 'doublepit', 'flat4', 'highroad', 'flat4', 'chain',
-           'flat4', 'sawgap', 'flat4', 'spikepair', 'flat4', 'islands',
-           'flat4', 'coinarc', 'flat4', 'ring', 'flat4', 'spike2', 'flat',
+           'flat4', 'sawgap', 'flat4', 'orbit2', 'flat4', 'islands',
+           'flat4', 'coinarc', 'flat4', 'ring', 'flat4', 'spikepair', 'flat',
            'finish']),
     # 8 – obrácená gravitace
     (135, ['start', 'flat', 'gravity', 'flat4', 'spike3', 'flat4', 'zigzag',
@@ -819,7 +858,7 @@ LEVEL_PLAN = [
            'flat4', 'corridor', 'flat4', 'spikepair', 'flat4', 'padtrap',
            'flat4', 'ring', 'flat4', 'highroad', 'flat4', 'spike3', 'flat4',
            'gravity', 'flat4', 'zigzag', 'flat4', 'padwall', 'flat4',
-           'islands', 'flat4', 'chain', 'flat4', 'fork', 'flat4', 'towers',
+           'islands', 'flat4', 'orbit2', 'flat4', 'fork', 'flat4', 'towers',
            'flat4', 'doublepit', 'flat4', 'spikepair', 'flat', 'finish']),
 ]
 
@@ -850,6 +889,7 @@ class Map:
         self.hazard = {}
         self.trigger = {}
         self.saws = []
+        self.orbiters = []
         self.rings = []
 
         for y, row in enumerate(rows):
@@ -863,6 +903,8 @@ class Map:
                     self.hazard[(x, y)] = 'down'
                 elif ch == 'S':
                     self.saws.append((x + 0.5, y + 0.5))
+                elif ch == '@':
+                    self.orbiters.append((x + 0.5, y + 0.5))
                 elif ch == 'J':
                     self.trigger[(x, y)] = 'pad'
                 elif ch == 'o':
@@ -965,11 +1007,23 @@ def advance(state, press, m, speed, dt):
         if hz == 'down' and box_overlap(x, y, HIT, tx + 0.22, ty, tx + 0.78, ty + 0.65):
             return None
 
+    def hits(cx, cy, radius):
+        dx = max(abs(cx - x) - HIT / 2, 0)
+        dy = max(abs(cy - y) - HIT / 2, 0)
+        return dx * dx + dy * dy < radius * radius
+
     for sx, sy in m.saws:
-        dx = max(abs(sx - x) - HIT / 2, 0)
-        dy = max(abs(sy - y) - HIT / 2, 0)
-        if dx * dx + dy * dy < (0.45 * 0.85) ** 2:
+        if hits(sx, sy, SAW_HIT):
             return None
+
+    # Koule obíhá kolem kotvy; kostka běží konstantní rychlostí, takže odehraný
+    # čas jde spočítat z její x-ové souřadnice (stejně jako `animPhase` ve hře)
+    if m.orbiters:
+        angle = (x - (m.spawn[0] + 0.5)) / speed * ORBIT_SPEED
+        for ax, ay in m.orbiters:
+            if hits(ax + math.cos(angle) * ORBIT_RADIUS,
+                    ay + math.sin(angle) * ORBIT_RADIUS, BALL_HIT):
+                return None
 
     if x >= m.finish_x:
         return 'win'
@@ -1037,12 +1091,17 @@ TEMPLATE = '''import {{Level}} from "../level.js";
 // vynutit přegenerování jde přepínačem --force.
 // První argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED).
 const level{n} = new Level(
-    {speed},
+    {head},
 {rows}
 );
 
 export {{level{n}}};
 '''
+
+# Vizuální témata úrovní (viz Level v js/level.js). Bez záznamu = běžný vzhled.
+LEVEL_THEMES = {
+    5: 'ice',       # ledová jeskyně – hroty se kreslí jako modré krápníky
+}
 
 
 def fingerprint(speed, rows):
@@ -1053,7 +1112,9 @@ def fingerprint(speed, rows):
 
 def js_source(n, speed, rows):
     body = '\n'.join('    "%s",' % r.replace('\\', '\\\\').replace('"', '\\"') for r in rows)
-    return TEMPLATE.format(n=n, speed=speed, rows=body, digest=fingerprint(speed, rows))
+    theme = LEVEL_THEMES.get(n)
+    head = f"{{speed: {speed}, theme: '{theme}'}}" if theme else str(speed)
+    return TEMPLATE.format(n=n, head=head, rows=body, digest=fingerprint(speed, rows))
 
 
 def hand_edited(path):

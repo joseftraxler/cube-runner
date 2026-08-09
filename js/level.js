@@ -1,7 +1,10 @@
 /**
  * Level rozparsuje mapu předanou jako seznam řádků (stringů).
+ *
  * Prvním parametrem je rychlost běhu v procentech základní rychlosti
- * (100 = BASE_SPEED, 130 = o třetinu rychleji).
+ * (100 = BASE_SPEED, 130 = o třetinu rychleji). Místo čísla jde předat objekt
+ * `{speed, theme}` a levelu tím dát vizuální téma – `'ice'` vykreslí hroty jako
+ * modré krápníky a obarví celou úroveň do ledova.
  *
  * Mapa se čte zleva doprava, kostka běží sama a hráč jen skáče.
  * Legenda znaků:
@@ -10,6 +13,7 @@
  *   ^        hrot stojící na zemi (smrtící)
  *   v        hrot visící ze stropu (smrtící)
  *   S        rotující pila (smrtící)
+ *   @        koule na řetězu obíhající kolem kotvy (smrtící, pohyblivá)
  *   J        odrazová plošina – při dotyku vymrští kostku výš než běžný skok
  *   o        skokový prstenec – ve vzduchu z něj lze na stisk znovu vyskočit
  *   D        portál s gravitací dolů (normální)
@@ -26,8 +30,10 @@ const HEADROOM = 2;
 const MIN_ROWS = 6;
 
 export class Level {
-    constructor(speed, ...rows) {
-        this.speed = speed;
+    constructor(options, ...rows) {
+        const config = typeof options === 'number' ? {speed: options} : options;
+        this.speed = config.speed;
+        this.theme = config.theme ?? null;
         this.rows = rows;
         this.height = rows.length;
         this.width = Math.max(...rows.map(r => r.length));
@@ -37,7 +43,8 @@ export class Level {
         this.triggers = [];   // triggers[y][x] = 'pad' | 'ring' | 'gravityDown' | 'gravityUp' | null
         this.coins = [];      // coins[y][x] = true, pokud tam je nesebraná mince
         this.coinCount = 0;
-        this.sawSpawns = [];  // [{x, y}]
+        this.sawSpawns = [];      // [{x, y}]
+        this.orbiterSpawns = [];  // [{x, y}] – kotvy koulí na řetězu
         this.playerSpawn = {x: 1, y: this.height - 3};
         this.finishX = this.width;  // vodorovná souřadnice cíle
         this.contentTop = this.height;  // nejvyšší řádek, kde je něco k vidění
@@ -77,6 +84,9 @@ export class Level {
                         break;
                     case 'S':
                         this.sawSpawns.push({x, y});
+                        break;
+                    case '@':
+                        this.orbiterSpawns.push({x, y});
                         break;
                     case 'J':
                         trigger = 'pad';

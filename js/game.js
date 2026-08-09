@@ -1,6 +1,7 @@
 import {Level} from "./level.js";
 import {Player} from "./entities/player.js";
 import {Saw, SAW_RADIUS} from "./entities/saw.js";
+import {Orbiter, BALL_RADIUS} from "./entities/orbiter.js";
 import {BASE_SPEED, CUBE, HIT, PAD_BOOST} from "./physics.js";
 import {buildKeyMap, actionForEvent} from "./input.js";
 import {Sound} from "./audio.js";
@@ -46,11 +47,12 @@ export class Game {
     loadLevel() {
         // Znovu rozparsujeme level, aby se po smrti obnovily mince i prstence
         const base = this.levels[this.levelIndex];
-        this.level = new Level(base.speed, ...base.rows);
+        this.level = new Level({speed: base.speed, theme: base.theme}, ...base.rows);
 
         const speed = BASE_SPEED * this.level.speed / 100;
         this.player = new Player(this, this.level.playerSpawn.x + 0.5, this.level.playerSpawn.y + 0.5, speed);
         this.saws = this.level.sawSpawns.map(s => new Saw(this, s.x + 0.5, s.y + 0.5));
+        this.orbiters = this.level.orbiterSpawns.map(o => new Orbiter(this, o.x + 0.5, o.y + 0.5));
 
         this.usedRings = new Set();  // "x,y" prstenců využitých v tomto pokusu
         this.coins = 0;
@@ -231,7 +233,6 @@ export class Game {
     update(dt) {
         this.clock += dt;
         this.updateParticles(dt);
-        this.saws.forEach(s => s.step(dt));
 
         if (this.state === 'dying') {
             this.stateTimer -= dt;
@@ -244,6 +245,11 @@ export class Game {
         }
 
         if (this.state !== 'playing') return;
+
+        // Pohyblivé překážky se hýbou jen za hry. Jejich poloha tak závisí čistě
+        // na odehraném čase, což potřebuje simulace v generátoru.
+        this.saws.forEach(s => s.step(dt));
+        this.orbiters.forEach(o => o.step(dt));
 
         // Držené tlačítko skáče znovu hned po dopadu (jako v Geometry Dash)
         if (this.holdJump && this.player.onGround) {
@@ -372,15 +378,23 @@ export class Game {
             if (hit) return true;
         }
 
-        // Pily jsou kulaté – měříme vzdálenost od nejbližšího bodu hitboxu
-        const half = HIT / 2;
+        // Pily i koule jsou kulaté – měříme vzdálenost od nejbližšího bodu hitboxu
         for (const saw of this.saws) {
-            const dx = Math.max(Math.abs(saw.x - this.player.x) - half, 0);
-            const dy = Math.max(Math.abs(saw.y - this.player.y) - half, 0);
-            if (dx * dx + dy * dy < (SAW_RADIUS * 0.85) ** 2) return true;
+            if (this.hitsCircle(saw.x, saw.y, SAW_RADIUS * 0.85)) return true;
+        }
+        for (const orbiter of this.orbiters) {
+            if (this.hitsCircle(orbiter.ballX, orbiter.ballY, BALL_RADIUS * 0.9)) return true;
         }
 
         return false;
+    }
+
+    // Dotýká se hitbox kostky kruhu se středem [cx, cy]?
+    hitsCircle(cx, cy, radius) {
+        const half = HIT / 2;
+        const dx = Math.max(Math.abs(cx - this.player.x) - half, 0);
+        const dy = Math.max(Math.abs(cy - this.player.y) - half, 0);
+        return dx * dx + dy * dy < radius * radius;
     }
 
     updateCamera() {
@@ -431,8 +445,10 @@ export class Game {
         return this.offsetY + y * this.tile;
     }
 
-    // Barevný odstín se s každým levelem posouvá – každý level vypadá jinak
+    // Barevný odstín se s každým levelem posouvá – každý level vypadá jinak.
+    // Level s tématem si odstín určuje sám (ledový je studeně modrý).
     get hue() {
+        if (this.level.theme === 'ice') return 194;
         return (205 + this.levelIndex * 31) % 360;
     }
 
@@ -440,6 +456,7 @@ export class Game {
         this.drawBackground();
         this.drawLevel();
         this.saws.forEach(s => s.draw(this.ctx, this.px(s.x), this.py(s.y), this.tile));
+        this.orbiters.forEach(o => o.draw(this.ctx, this.px(o.x), this.py(o.y), this.tile));
 
         if (this.state !== 'dying') {
             this.player.draw(this.ctx, this.px(this.player.x), this.py(this.player.y), this.tile);
@@ -487,7 +504,11 @@ export class Game {
                 if (this.level.isSolid(x, y)) this.drawBlock(x, y);
 
                 const hazard = this.level.hazardAt(x, y);
-                if (hazard) this.drawSpike(x, y, hazard === 'spikeUp');
+                if (hazard) {
+                    const up = hazard === 'spikeUp';
+                    if (this.level.theme === 'ice') this.drawIcicle(x, y, up);
+                    else this.drawSpike(x, y, up);
+                }
 
                 const trigger = this.level.triggerAt(x, y);
                 if (trigger === 'pad') this.drawPad(x, y);
@@ -547,6 +568,47 @@ export class Game {
 
         ctx.strokeStyle = '#3d0713';
         ctx.lineWidth = Math.max(t * 0.05, 1);
+        ctx.stroke();
+    }
+
+    /**
+     * Krápník – ledová obdoba hrotu. Není to rovný trojúhelník: hrana se
+     * v půlce zalomí, takže rampouch vypadá narostlý, ne vyříznutý.
+     */
+    drawIcicle(x, y, up) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+        const base = up ? py + t : py;          // odkud krápník roste
+        const tip = up ? py + t * 0.04 : py + t * 0.96;
+        const mid = base + (tip - base) * 0.45;
+
+        ctx.beginPath();
+        ctx.moveTo(px + t * 0.1, base);
+        ctx.lineTo(px + t * 0.28, mid);
+        ctx.lineTo(px + t * 0.5, tip);
+        ctx.lineTo(px + t * 0.7, mid);
+        ctx.lineTo(px + t * 0.9, base);
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(px, base, px, tip);
+        grad.addColorStop(0, '#2f8fd0');
+        grad.addColorStop(0.55, '#7fd4f5');
+        grad.addColorStop(1, '#eafaff');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#0d3f63';
+        ctx.lineWidth = Math.max(t * 0.04, 1);
+        ctx.stroke();
+
+        // Odlesk podél jedné hrany, ať to vypadá jako led
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = Math.max(t * 0.05, 1);
+        ctx.beginPath();
+        ctx.moveTo(px + t * 0.38, base + (tip - base) * 0.15);
+        ctx.lineTo(px + t * 0.5, tip);
         ctx.stroke();
     }
 

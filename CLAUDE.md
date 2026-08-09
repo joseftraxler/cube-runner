@@ -36,9 +36,13 @@ node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzát
   Do světa jen *nahlížejí* kvůli vlastnímu pohybu (`this.game.level` kvůli
   blokům). `Player` si řeší svoji fyziku a náraz do zdi jen ohlásí příznakem
   `crashed` – že to znamená smrt, rozhoduje `Game`.
-- `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw` ji implementují
-  a **nesahají na `this.game`** – dostanou kontext i pozici parametrem. Tuhle
-  nezávislost `draw` na hře zachovej.
+- `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/`Orbiter` ji
+  implementují a **nesahají na `this.game`** – dostanou kontext i pozici
+  parametrem. Tuhle nezávislost `draw` na hře zachovej.
+- **Pohyblivé překážky se hýbou jen ve stavu `playing`** (`Game.update` je krokuje
+  až za kontrolou stavu). Jejich `animPhase` je tím pádem přesně odehraný čas
+  a poloha je čistá funkce místa v levelu – bez toho by je generátor nemohl
+  odsimulovat a playtest by se s hrou rozešel.
 
 Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
 `input.js` (mapování kláves na akce), `audio.js` (zvuk), `scripts.js` (bootstrap –
@@ -79,8 +83,11 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
 - **`speed`** = rychlost běhu v **procentech základní rychlosti** (100 = `BASE_SPEED`).
   Skutečná rychlost se počítá v `Game.loadLevel`.
 - **řádky mapy** – legenda: `#` blok, `^` hrot ze země, `v` hrot ze stropu,
-  `S` pila, `J` odrazová plošina, `o` skokový prstenec, `D`/`U` gravitační portál
-  (dolů/vzhůru), `*` mince, `P` start, `F` cíl, mezera = prázdno.
+  `S` pila, `@` koule na řetězu, `J` odrazová plošina, `o` skokový prstenec,
+  `D`/`U` gravitační portál (dolů/vzhůru), `*` mince, `P` start, `F` cíl,
+  mezera = prázdno.
+- místo čísla jde předat `{speed, theme}`; téma `'ice'` kreslí hroty jako modré
+  krápníky a obarví level do ledova. Témata drží `LEVEL_THEMES` v generátoru.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen
@@ -92,6 +99,9 @@ Mapy staví generátor `tools/gen_levels.py` (`python3 tools/gen_levels.py`) –
 je z pojmenovaných úseků (`PATTERNS`) podle `LEVEL_PLAN` a přepíše `js/levels/*.js`.
 Každá úroveň má v plánu **vlastní téma** (propasti, plošiny, pily, stropy,
 odrazové plošiny, prstence, gravitace), ať se levely navzájem nepodobají.
+Gravitační portál jde přeskočit, takže úsek `gravity` má překážky **na stropě
+i na podlaze** – obě cesty musí být průchozí (ověřuj obojí zvlášť tak, že tu
+druhou zataraseš).
 Hustotu řídí šířka oddechu mezi úseky: `flat` (8 políček) na klid, `flat4` (4) tam,
 kde mají překážky navazovat. Úseky samotné mají okraje co nejužší – prázdno
 uvnitř úseku se sčítá s oddechem a level pak působí prázdně.
@@ -135,10 +145,8 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
 - Akordový úder (`#stab`) je jediné místo, kde zazní celá harmonie naráz – basa
   drží jen základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
-  Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad; delší
-  ležící hlas se tam zkoušel a překážel. Schválně nemá ostrý náběh ani rezonanci – má
-  ležet pod hudbou, ne přes ni řezat (dřívější rezonanční pila tam nepatřila).
-  Hraje nejvýš ve čtyřech taktech z osmi a nikdy ve dvou po sobě.
+  Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
+  ležící hlas se tam zkoušel a překážel.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.

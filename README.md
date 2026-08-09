@@ -4,7 +4,7 @@ Skákací arkáda ve stylu Geometry Dash napsaná v čistém JavaScriptu (ES mod
 která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez build kroku.
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
-10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, nízké stropy,
+10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, ledová jeskyně,
 odrazové plošiny, skokové prstence, obrácená gravitace – a s rostoucí rychlostí
 i hustotou překážek. Poslední úroveň běží o polovinu rychleji než první a je
 skoro dvakrát delší.
@@ -43,6 +43,7 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 | Hrot                 | Smrtící. Stojí na zemi, nebo visí ze stropu.                          |
 | Propast              | Díra v podlaze – kostka propadne a umře.                              |
 | Pila                 | Rotující kotouč, smrtící při dotyku.                                  |
+| Koule na řetězu      | Obíhá kolem kotvy, takže je smrtící jinde v jinou chvíli – podle toho, kde zrovna je, se pod ní proběhne, nebo se přeskočí. |
 | Odrazová plošina     | Při dotyku vymrští kostku o dost výš než běžný skok (i bez stisku).   |
 | Skokový prstenec     | Ve vzduchu z něj jde na stisk skočit znovu. Jednou za pokus.          |
 | Gravitační portál    | Otočí gravitaci – kostka spadne na strop a běží po něm hlavou dolů.   |
@@ -66,8 +67,8 @@ hi-hat, melodie s dozvukem a **akordové údery** – krátký mollový akord z
 rozladěných pil, kterému se s úderem otevře a hned zase přivře filtr. Je to
 jediné místo, kde ve skladbě zazní celá harmonie naráz (basa drží jen základní
 tón, melodie je jednohlas), takže střední pásmo dostane tělo. Padají každý druhý
-takt jako interpunkce, v nejvyšším stupni se přidá ještě synkopovaná odpověď. Po nadpoloviční
-části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel
+takt jako interpunkce, v nejvyšším stupni se přidá ještě synkopovaná odpověď.
+Po nadpoloviční části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel
 s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
 jak se ti daří.
 
@@ -116,7 +117,8 @@ js/
 ├── entities/
 │   ├── entity.js       Entity – základ pohyblivého objektu (abstraktní draw)
 │   ├── player.js       Player – fyzika kostky a její vykreslení
-│   └── saw.js          Saw – rotující pila
+│   ├── saw.js          Saw – rotující pila
+│   └── orbiter.js      Orbiter – koule na řetězu obíhající kolem kotvy
 └── levels/
     └── level1.js … level10.js   definice jednotlivých úrovní
 tools/
@@ -133,7 +135,10 @@ vykreslit, zatímco každá entita se stará jen sama o sebe (svůj pohyb a vzhl
 ## Formát úrovně
 
 Úroveň je instance třídy `Level`. Prvním argumentem je rychlost běhu v procentech
-základní rychlosti (100 = základ, 140 = o 40 % rychleji), následují řádky mapy:
+základní rychlosti (100 = základ, 150 = o polovinu rychleji), následují řádky mapy.
+Místo čísla jde předat i `{speed, theme}` a dát úrovni vizuální téma – `'ice'`
+kreslí hroty jako modré krápníky a obarví celou úroveň do ledova (tak vypadá
+5. úroveň):
 
 ```js
 import {Level} from "../level.js";
@@ -159,6 +164,7 @@ Legenda znaků mapy:
 | `^`       | hrot stojící na zemi                                          |
 | `v`       | hrot visící ze stropu                                         |
 | `S`       | rotující pila                                                 |
+| `@`       | koule na řetězu obíhající kolem kotvy                         |
 | `J`       | odrazová plošina                                              |
 | `o`       | skokový prstenec                                              |
 | `D`       | gravitační portál – gravitace dolů (normální)                 |
