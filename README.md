@@ -168,8 +168,24 @@ v opravdovém prohlížeči a vyrobit náhled:
 
 ```bash
 node tools/playtest.mjs               # projde všech 10 levelů skutečným kódem hry
+node tools/swtest.mjs                 # ověří chování service workeru (offline vs. aktuálnost)
 node tools/screenshot.mjs             # přegeneruje docs/preview.png
 ```
+
+### Když se úprava levelu neprojeví
+
+Hra je PWA se service workerem, takže do hry vstupuje ještě cache. Service worker
+je nastavený **network-first** – online tedy vždycky dostaneš aktuální soubor.
+Pokud se přesto načítá stará verze, bývá to jednou z těchto věcí:
+
+- **starý service worker** z dřívější návštěvy: v DevTools → Application →
+  Service Workers zaškrtni „Update on reload“, nebo dej „Unregister“ a načti znovu;
+- **cache prohlížeče**: hard reload (`Ctrl`/`Cmd` + `Shift` + `R`);
+- **GitHub Pages** posílá u statických souborů `Cache-Control: max-age=600`,
+  takže se změna na živé verzi může projevit až za pár minut.
+
+Taky pozor, že soubory v `js/levels/` **přepisuje generátor** – ruční úpravu
+smaže. Když chceš změnit úroveň natrvalo, uprav úsek v `tools/gen_levels.py`.
 
 ## Licence
 

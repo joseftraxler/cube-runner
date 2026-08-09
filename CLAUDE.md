@@ -110,10 +110,20 @@ když se rozejdou, playtest spadne.
 ## PWA / offline
 
 Hra je instalovatelná PWA: `manifest.json`, `icon.svg`, service worker `sw.js`
-(registruje se v `scripts.js`). `sw.js` cachuje pevný seznam `ASSETS` (cache-first).
+(registruje se v `scripts.js`). Do cache `CACHE` se při instalaci přednačte seznam
+`ASSETS`, aby hra fungovala offline.
+
+Dvě pravidla, na kterých v `sw.js` záleží (obojí hlídá `node tools/swtest.mjs`):
+
+- **Network-first, ne cache-first.** Online se vždycky použije aktuální soubor
+  a jen se uloží stranou; do cache se sahá, až když síť selže. Cache-first by
+  znamenal, že se upravený level po reloadu vůbec nenačte a hraje se stará verze.
+- **Mažou se jen vlastní cache** (podle prefixu `cube-runner-`). Na stejné doméně
+  (třeba GitHub Pages) běží i jiné appky a jejich cache nám nepatří.
+
 **Když přidáš/přejmenuješ soubor** (modul, level, asset), přidej ho do `ASSETS`
-**a zvyš verzi** `CACHE` (`cube-runner-vN`) – jinak se offline načte stará verze nebo
-soubor bude chybět. Levely 1–10 se v `ASSETS` generují smyčkou; jiný počet uprav.
+**a zvyš verzi** `CACHE` (`cube-runner-vN`) – jinak bude offline chybět. Levely 1–10
+se v `ASSETS` generují smyčkou; jiný počet uprav.
 
 ## Náhled do README
 

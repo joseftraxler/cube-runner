@@ -1,6 +1,7 @@
 // Service worker pro PWA – hra funguje offline a jde nainstalovat.
 // Cesty jsou relativní ke scope (umístění tohoto souboru).
-const CACHE = 'cube-runner-v1';
+const PREFIX = 'cube-runner-';
+const CACHE = PREFIX + 'v2';
 
 const ASSETS = [
     './',
@@ -28,25 +29,37 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
     e.waitUntil(
         caches.keys()
-            .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+            // Mazat smíme jen svoje cache – na stejné doméně (např. GitHub Pages)
+            // můžou běžet i jiné appky a jejich cache nám nepatří
+            .then((keys) => Promise.all(
+                keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))
+            ))
             .then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (e) => {
     const req = e.request;
-    if (req.method !== 'GET') return;
+    if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
 
-    // Cache-first, s doplněním cache ze sítě; fallback na index.html
+    /*
+     * Network-first: online se vždycky vezme aktuální soubor a jen se uloží
+     * stranou, offline se sáhne do cache. Kdyby to bylo naopak (cache-first),
+     * upravený level by se po reloadu vůbec nenačetl – hrála by se stará verze
+     * z cache, dokud se nezvýší číslo `CACHE`.
+     */
     e.respondWith(
-        caches.match(req).then((cached) =>
-            cached || fetch(req).then((res) => {
-                if (res.ok && new URL(req.url).origin === self.location.origin) {
+        fetch(req)
+            .then((res) => {
+                if (res.ok) {
                     const copy = res.clone();
                     caches.open(CACHE).then((c) => c.put(req, copy));
                 }
                 return res;
-            }).catch(() => caches.match('./index.html'))
-        )
+            })
+            .catch(() => caches.open(CACHE).then((c) => c.match(req).then((cached) =>
+                // Na chybějící modul se nesmí vrátit HTML – rozbilo by to import
+                cached ?? (req.mode === 'navigate' ? c.match('./index.html') : Response.error())
+            )))
     );
 });
