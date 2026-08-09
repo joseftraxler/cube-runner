@@ -133,10 +133,10 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
-- Protihlas (`#counter`) je jeden táhlý hlas přes většinu taktu: čistá sinusovka
-  s pomalým nádechem, jemným vibratem a pomalým vyhasnutím. Výška jde po
-  schodech dolů – tón se drží rovně (`COUNTER_HOLD`), krátce sklouzne
-  (`COUNTER_GLIDE`) o stupeň níž, zase drží a sklouzne ještě níž. Schválně nemá ostrý náběh ani rezonanci – má
+- Akordový úder (`#stab`) je jediné místo, kde zazní celá harmonie naráz – basa
+  drží jen základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
+  Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad; delší
+  ležící hlas se tam zkoušel a překážel. Schválně nemá ostrý náběh ani rezonanci – má
   ležet pod hudbou, ne přes ni řezat (dřívější rezonanční pila tam nepatřila).
   Hraje nejvýš ve čtyřech taktech z osmi a nikdy ve dvou po sobě.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
