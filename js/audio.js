@@ -58,7 +58,11 @@ const PROGRESSIONS = [
 // Kdy v taktu začne protihlas a jak dlouho (v krocích) se táhne. Basa jde po
 // osminách, tenhle hlas přes ně v jednom kuse klouže – doplňují se, ne zdvojují.
 const COUNTER_START = 2;
-const COUNTER_STEPS = 12;
+const COUNTER_STEPS = 13;
+
+// Tvar výšky: podíl délky, kdy se tón drží rovně, než sklouzne na další stupeň
+const COUNTER_HOLD = 0.35;
+const COUNTER_GLIDE = 0.1;
 
 // Jemné chvění výšky protihlasu – právě ono dělá ten „strašidelný“ dojem
 const VIBRATO_HZ = 5.2;
@@ -199,9 +203,9 @@ export class Sound {
         // Rychlejší level = svižnější hudba (tempo roste s obtížností)
         const stepDur = 60 / (122 * speedPct / 100) / 4;
 
-        // Protihlas: fráze ze tří sousedních tónů stupnice, kterou pak jeden
-        // táhlý hlas plynule projede. Nikdy ve dvou taktech po sobě – má to
-        // být odpověď base, ne další podklad.
+        // Protihlas: fráze tří **klesajících** tónů stupnice, kterou pak jeden
+        // táhlý hlas projede po schodech (drží, sklouzne níž, drží, ještě níž).
+        // Nikdy ve dvou taktech po sobě – má to být odpověď base, ne podklad.
         const counters = [];
         let previous = false;
         for (let bar = 0; bar < BARS; bar++) {
@@ -213,13 +217,12 @@ export class Sound {
                 continue;
             }
 
-            let index = Math.floor(random() * scale.length);
+            // Začíná se v horní půlce stupnice, aby bylo kam klesat
+            let index = scale.length - 1 - Math.floor(random() * (scale.length / 2));
             counters.push([0, 1, 2].map(() => {
-                // Na kraji stupnice se odrazí, ať fráze nezůstane stát na jednom tónu
-                index += random() < 0.5 ? 1 : -1;
-                if (index < 0) index = 1;
-                if (index >= scale.length) index = scale.length - 2;
-                return scale[index];
+                const note = scale[index];
+                index = Math.max(0, index - (random() < 0.7 ? 1 : 2));
+                return note;
             }));
         }
 
@@ -425,11 +428,11 @@ export class Sound {
     }
 
     /**
-     * Protihlas k base. Čistá sinusovka bez vyšších harmonických, která se
-     * pomalu nadechne, plynule překlouže zadané tóny a zase vyhasne. Výšku jí
-     * lehce rozechvívá pomalé vibrato – dohromady je to ten éterický, „duchařský“
-     * zvuk. Schválně nemá ostrý náběh ani rezonanci: nemá řezat přes hudbu,
-     * ale ležet pod ní.
+     * Protihlas k base. Čistá sinusovka bez vyšších harmonických: pomalu se
+     * nadechne, chvíli drží rovný tón, plynule sklouzne o stupeň níž, zase
+     * drží, sklouzne ještě níž a vyhasne. Výšku jí lehce rozechvívá pomalé
+     * vibrato – dohromady je to ten éterický, „duchařský“ zvuk. Schválně nemá
+     * ostrý náběh ani rezonanci: nemá řezat přes hudbu, ale ležet pod ní.
      */
     #counter(freqs, dur, when) {
         const osc = this.ctx.createOscillator();
@@ -438,11 +441,12 @@ export class Sound {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freqs[0], when);
 
-        // Přejezdy jsou rozložené tak, aby všechny tóny zazněly ještě než hlas
-        // začne doznívat – výška se přitom nikde nezlomí
-        const leg = 0.7 / Math.max(freqs.length - 1, 1);
+        // Každý tón se nejdřív chvíli drží rovně a teprve pak plynule sklouzne
+        // na další – odtud ten schodovitý, klesající tvar
         freqs.slice(1).forEach((freq, i) => {
-            osc.frequency.exponentialRampToValueAtTime(freq, when + dur * leg * (i + 1));
+            const hold = when + dur * (COUNTER_HOLD + i * (COUNTER_HOLD - COUNTER_GLIDE / 2));
+            osc.frequency.setValueAtTime(freqs[i], hold);
+            osc.frequency.exponentialRampToValueAtTime(freq, hold + dur * COUNTER_GLIDE);
         });
 
         // Vibrato náběhne až po nádechu, ať je nástup čistý
@@ -454,9 +458,9 @@ export class Sound {
         lfo.connect(depth).connect(osc.detune);
 
         env.gain.setValueAtTime(0.0001, when);
-        env.gain.exponentialRampToValueAtTime(0.13, when + dur * 0.3);   // pomalý nádech
-        env.gain.setValueAtTime(0.13, when + dur * 0.7);
-        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);       // a vyhasnutí
+        env.gain.exponentialRampToValueAtTime(0.075, when + dur * 0.22);  // pomalý nádech
+        env.gain.setValueAtTime(0.075, when + dur * 0.82);                // dlouho se drží
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);        // a vyhasne
 
         // Přes leadGain, takže se hlas nese i do dozvuku a má kolem sebe prostor
         osc.connect(env).connect(this.leadGain);

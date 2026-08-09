@@ -62,9 +62,10 @@ harmonii i tempo odvozené od své rychlosti, takže s obtížností roste i tah
 
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
 temná basa s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
-hi-hat, melodie s dozvukem a éterický protihlas – táhlá sinusovka bez ostrého
-náběhu, která se pomalu nadechne, plynule překlouže pár sousedních tónů stupnice
-a zase vyhasne, přičemž jí výšku lehce rozechvívá pomalé vibrato. Po nadpoloviční
+hi-hat, melodie s dozvukem a éterický protihlas – tichá táhlá sinusovka bez
+ostrého náběhu, která se pomalu nadechne, chvíli drží rovný tón, plynule sklouzne
+o stupeň níž, zase drží, sklouzne ještě níž a vyhasne; výšku jí přitom lehce
+rozechvívá pomalé vibrato. Po nadpoloviční
 části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel
 s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
 jak se ti daří.

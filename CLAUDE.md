@@ -134,8 +134,9 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
 - Protihlas (`#counter`) je jeden táhlý hlas přes většinu taktu: čistá sinusovka
-  s pomalým nádechem, plynulým přejezdem po sousedních tónech stupnice, jemným
-  vibratem a pomalým vyhasnutím. Schválně nemá ostrý náběh ani rezonanci – má
+  s pomalým nádechem, jemným vibratem a pomalým vyhasnutím. Výška jde po
+  schodech dolů – tón se drží rovně (`COUNTER_HOLD`), krátce sklouzne
+  (`COUNTER_GLIDE`) o stupeň níž, zase drží a sklouzne ještě níž. Schválně nemá ostrý náběh ani rezonanci – má
   ležet pod hudbou, ne přes ni řezat (dřívější rezonanční pila tam nepatřila).
   Hraje nejvýš ve čtyřech taktech z osmi a nikdy ve dvou po sobě.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
