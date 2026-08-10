@@ -83,6 +83,12 @@ vstupy směruj taky tam, ať se logika neduplikuje. Přepínače v rohu HUD se k
 do stejně širokých pruhů (`ICON_ZONE`), do jakých se ťuká – ikona i dotyková
 plocha tak drží pohromadě.
 
+Do horního pruhu se na telefonu všechno nevejde, takže `drawHud` texty **měří
+a zkracuje po stupních**: nejdřív zmizí procenta uprostřed (postup ukazuje i pruh
+nad nimi), pak popisek `POKUS` a nakonec slovo `LEVEL`. Kdyby se místo měření
+odhadovalo podle šířky okna, delší čísla (stovky pokusů, vysoké skóre) by se
+zase překryla.
+
 Držené tlačítko skoku (`holdJump`) skáče znovu hned po dopadu – řeší to `Game.update`,
 ne `Player`.
 
@@ -243,6 +249,10 @@ haptika o hře nic neví.
 - Bez podpory (`navigator.vibrate` chybí) se přepínač ani nekreslí, ani nereaguje
   – přepínal by nic. Zapnutí se proto potvrdí vibrací, jinak by na ztlumeném
   telefonu nebylo poznat, že tlačítko zabralo.
+- **iOS Vibration API nemá** – na iPhonu ani iPadu (všechny tamní prohlížeče
+  běží na WebKitu) se proto nevibruje a ikona se nekreslí. Není to chyba
+  a nedá se to obejít ničím, co by umělo vzory: jediná cesta v Safari je haptika
+  systémového přepínače, což je jedno ťuknutí bez odstínů.
 - Stav se pamatuje v `localStorage` (klíč `cube-runner-haptics`, výchozí zapnuto),
   vypnutí rozehraný vzor rovnou umlčí (`vibrate(0)`).
 
@@ -252,11 +262,16 @@ Hra je instalovatelná PWA: `manifest.json`, `icon.svg`, service worker `sw.js`
 (registruje se v `scripts.js`). Do cache `CACHE` se při instalaci přednačte seznam
 `ASSETS`, aby hra fungovala offline.
 
-Dvě pravidla, na kterých v `sw.js` záleží (obojí hlídá `node tools/swtest.mjs`):
+Tři pravidla, na kterých v `sw.js` záleží (všechna hlídá `node tools/swtest.mjs`):
 
 - **Network-first, ne cache-first.** Online se vždycky použije aktuální soubor
   a jen se uloží stranou; do cache se sahá, až když síť selže. Cache-first by
   znamenal, že se upravený level po reloadu vůbec nenačte a hraje se stará verze.
+- **„Ze sítě“ musí obejít i cache prohlížeče** (`fresh()` = `cache: 'no-cache'`,
+  a to i při přednačtení v `install`). Samotné `fetch(req)` smí odpovědět
+  z HTTP cache a GitHub Pages posílá `max-age=600` – nasazená verze by se pak
+  na mobilu objevila až za deset minut a vypadalo by to, že se změna neprojevila.
+  Revalidace nic nestojí: nezměněný soubor server odbaví odpovědí 304.
 - **Mažou se jen vlastní cache** (podle prefixu `cube-runner-`). Na stejné doméně
   (třeba GitHub Pages) běží i jiné appky a jejich cache nám nepatří.
 

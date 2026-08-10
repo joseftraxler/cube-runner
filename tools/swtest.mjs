@@ -23,9 +23,10 @@ const MIME = {
     '.json': 'application/json', '.svg': 'image/svg+xml',
 };
 
-// Statický server. Posílá `no-store`, aby se testovala cache service workeru
-// a ne cache prohlížeče.
-function serve() {
+// Statický server. Ve výchozím stavu posílá `no-store`, aby se testovala cache
+// service workeru a ne cache prohlížeče; druhé kolo testu si vyžádá `max-age`,
+// kterým se ohání GitHub Pages.
+function serve(cacheControl = 'no-store') {
     const server = createServer(async (req, res) => {
         let rel = normalize(decodeURIComponent(req.url.split('?')[0])).replace(/^(\.\.[/\\])+/, '');
         if (rel === '/') rel = '/index.html';
@@ -33,7 +34,7 @@ function serve() {
             const body = await readFile(join(ROOT, rel));
             res.writeHead(200, {
                 'Content-Type': MIME[extname(rel)] ?? 'application/octet-stream',
-                'Cache-Control': 'no-store',
+                'Cache-Control': cacheControl,
             });
             res.end(body);
         } catch {
@@ -41,6 +42,15 @@ function serve() {
         }
     });
     return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
+}
+
+// Rychlost levelu 3 ze zdrojáku – test tak nezávisí na tom, co je zrovna v plánu.
+// Level s tématem má místo čísla `{speed: 112, theme: 'desert'}`, bereme obojí.
+function bumpSpeed(source) {
+    const found = source.match(/^ {4}(?:\{speed: )?(\d+)/m);
+    if (!found) throw new Error('v level3.js jsem nenašel rychlost');
+    const bumped = Number(found[1]) + 1;
+    return {bumped, source: source.replace(found[0], found[0].replace(found[1], String(bumped)))};
 }
 
 let failed = 0;
@@ -64,12 +74,8 @@ try {
     check(true, 'hra se načetla a service worker je aktivní');
 
     // Úprava levelu se musí projevit hned po reloadu, ne až po zvýšení verze cache.
-    // Rychlost si přečteme ze souboru, ať test nezávisí na tom, co je v plánu.
-    // Level s tématem má místo čísla `{speed: 112, theme: 'desert'}` – bereme obojí
-    const before = original.match(/^ {4}(?:\{speed: )?(\d+)/m);
-    if (!before) throw new Error('v level3.js jsem nenašel rychlost');
-    const bumped = Number(before[1]) + 1;
-    await writeFile(LEVEL, original.replace(before[0], before[0].replace(before[1], String(bumped))));
+    const {bumped, source} = bumpSpeed(original);
+    await writeFile(LEVEL, source);
     await page.reload();
     await page.waitForFunction(() => !!window.cubeRunner);
     const speed = await page.evaluate(() => window.cubeRunner.levels[2].speed);
@@ -101,6 +107,34 @@ try {
         return caches.keys();
     });
     check(keys.includes('jina-appka-v1'), `cizí cache zůstala nedotčená (${keys.join(', ')})`);
+
+    /*
+     * Totéž ještě jednou proti serveru, který se chová jako GitHub Pages:
+     * statické soubory s `Cache-Control: max-age=600`. „Network-first“ musí
+     * platit doslova – kdyby service worker nechal `fetch` sáhnout do cache
+     * prohlížeče, čerstvě nasazená verze by se na telefonu objevila až za deset
+     * minut. Vlastní kontext = čistý profil, aby se nemíchal s prvním kolem.
+     */
+    const pagesServer = await serve('max-age=600');
+    const pagesContext = await browser.newContext({viewport: {width: 1024, height: 600}});
+    const pagesPage = await pagesContext.newPage();
+    try {
+        await pagesPage.goto(`http://127.0.0.1:${pagesServer.address().port}/`);
+        // Až když stránku řídí service worker, jdou další požadavky přes něj
+        await pagesPage.waitForFunction(() => navigator.serviceWorker.controller !== null,
+            null, {timeout: 15000});
+
+        await writeFile(LEVEL, source);     // „nasazení“ během platnosti max-age
+        await pagesPage.reload();
+        await pagesPage.waitForFunction(() => !!window.cubeRunner);
+        const cached = await pagesPage.evaluate(() => window.cubeRunner.levels[2].speed);
+        check(cached === bumped,
+            `nasazená verze se načte hned i při max-age (rychlost ${cached}, čekáno ${bumped})`);
+    } finally {
+        await writeFile(LEVEL, original);
+        await pagesContext.close();
+        pagesServer.close();
+    }
 } finally {
     await writeFile(LEVEL, original);
     await browser.close();

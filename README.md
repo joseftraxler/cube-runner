@@ -96,7 +96,9 @@ přesně tam, kde se hraje se ztlumeným zvukem.
 
 Vypnout se dají klávesou `H` nebo ťuknutím na ikonu 📳 vedle přepínače zvuku
 (nastavení se pamatuje do příště). Na zařízeních, která vibrace neumí, se ikona
-vůbec nezobrazuje.
+vůbec nezobrazuje – **na iPhonu a iPadu tedy hra nevibruje vůbec**, protože iOS
+Vibration API nepodporuje (týká se to i Chromu a Firefoxu na iOS, uvnitř je to
+pořád WebKit). Na Androidu funguje v Chromu, Firefoxu i Samsung Internetu.
 
 ## Spuštění
 
@@ -254,8 +256,11 @@ Pokud se přesto načítá stará verze, bývá to jednou z těchto věcí:
 - **starý service worker** z dřívější návštěvy: v DevTools → Application →
   Service Workers zaškrtni „Update on reload“, nebo dej „Unregister“ a načti znovu;
 - **cache prohlížeče**: hard reload (`Ctrl`/`Cmd` + `Shift` + `R`);
-- **GitHub Pages** posílá u statických souborů `Cache-Control: max-age=600`,
-  takže se změna na živé verzi může projevit až za pár minut.
+- **GitHub Pages** posílá u statických souborů `Cache-Control: max-age=600`.
+  Service worker si proto u serveru pokaždé ověří, jestli se soubor nezměnil,
+  takže nasazená verze naskočí hned. Než ale stránku service worker začne řídit
+  (úplně první návštěva, odregistrovaný worker), platí ta desetiminutová cache
+  prohlížeče dál – tam pomůže hard reload nebo anonymní okno.
 
 Ruční úpravu mapy generátor nepřepíše (viz [Nástroje](#nástroje)), takže o ni
 tímhle způsobem nepřijdeš.

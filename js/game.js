@@ -1511,24 +1511,47 @@ export class Game {
         ctx.font = `600 ${Math.round(barH * 1.15)}px "Courier New", monospace`;
         ctx.textBaseline = 'top';
 
-        ctx.textAlign = 'left';
-        ctx.fillText(`LEVEL ${this.levelIndex + 1}/${this.levels.length}`, pad, barY + barH + 6);
-
-        ctx.textAlign = 'center';
-        ctx.fillText(`${Math.round(this.progress * 100)} %`, this.c.width / 2, barY + barH + 6);
-
         // Přepínače v pravém rohu – na dotykových zařízeních zároveň tlačítka.
         // Vibrace se ukazují jen tam, kde je prohlížeč umí (na desktopu by to
         // byl přepínač ničeho).
         const switches = this.haptics.supported ? 2 : 1;
         const textY = barY + barH + 6;
 
-        ctx.textAlign = 'right';
-        ctx.fillText(
-            `POKUS ${this.attempts} · 🪙 ${this.coins}/${this.level.coinCount} · ${this.score}`,
-            this.c.width - pad - ICON_ZONE * switches, textY
-        );
+        /*
+         * Na telefon se tři texty a dva přepínače do pruhu nevejdou, tak se HUD
+         * zkracuje po stupních: nejdřív zmizí procenta (postup ukazuje i pruh
+         * nad nimi), pak popisek pokusu a nakonec slovo LEVEL. Čísla zůstanou
+         * vždycky – ta jinde v HUD nejsou. Měří se doopravdy, protože šířka
+         * textu roste i s počtem pokusů a výší skóre.
+         */
+        const statsRight = this.c.width - pad - ICON_ZONE * switches;
+        const width = text => ctx.measureText(text).width;
+        const coins = `🪙 ${this.coins}/${this.level.coinCount}`;
+        const layouts = [
+            [`LEVEL ${this.levelIndex + 1}/${this.levels.length}`, `POKUS ${this.attempts} · ${coins} · ${this.score}`],
+            [`LEVEL ${this.levelIndex + 1}/${this.levels.length}`, `${this.attempts}× · ${coins} · ${this.score}`],
+            [`${this.levelIndex + 1}/${this.levels.length}`, `${this.attempts}× · ${coins} · ${this.score}`],
+        ];
+        const [level, stats] = layouts.find(([l, s]) => pad + width(l) + pad + width(s) <= statsRight)
+            ?? layouts[layouts.length - 1];
 
+        ctx.textAlign = 'left';
+        ctx.fillText(level, pad, textY);
+
+        ctx.textAlign = 'right';
+        ctx.fillText(stats, statsRight, textY);
+
+        const percent = `${Math.round(this.progress * 100)} %`;
+        const half = width(percent) / 2;
+        const room = this.c.width / 2 - half > pad + width(level) + pad
+            && this.c.width / 2 + half < statsRight - width(stats) - pad;
+
+        if (room) {
+            ctx.textAlign = 'center';
+            ctx.fillText(percent, this.c.width / 2, textY);
+        }
+
+        ctx.textAlign = 'right';
         ctx.globalAlpha = this.sound.muted ? 0.5 : 1;
         ctx.fillText(this.sound.muted ? '🔇' : '🔊', this.c.width - pad, textY);
 

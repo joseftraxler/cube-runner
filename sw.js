@@ -1,7 +1,7 @@
 // Service worker pro PWA – hra funguje offline a jde nainstalovat.
 // Cesty jsou relativní ke scope (umístění tohoto souboru).
 const PREFIX = 'cube-runner-';
-const CACHE = PREFIX + 'v5';
+const CACHE = PREFIX + 'v6';
 
 const ASSETS = [
     './',
@@ -23,9 +23,29 @@ const ASSETS = [
     ...Array.from({length: 10}, (_, i) => `./js/levels/level${i + 1}.js`),
 ];
 
+/**
+ * Stažení mimo cache prohlížeče. Samotné `fetch(req)` totiž smí sáhnout do
+ * HTTP cache, a GitHub Pages posílá u statických souborů `max-age=600` – čerstvě
+ * nasazená verze by se tak na telefonu objevila klidně až za deset minut,
+ * přestože je service worker network-first. `no-cache` si u serveru pokaždé
+ * ověří ETag; když se soubor nezměnil, odbaví se to odpovědí 304, takže to
+ * nestojí skoro nic.
+ */
+function fresh(url) {
+    return fetch(new Request(url, {cache: 'no-cache', credentials: 'same-origin'}));
+}
+
 self.addEventListener('install', (e) => {
     e.waitUntil(
-        caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())
+        caches.open(CACHE)
+            // I přednačtení musí jít na síť, jinak se do cache uloží to staré.
+            // Chybějící soubor instalaci shodí (jako dřív `addAll`) – půlka
+            // aplikace v cache je horší než žádná, offline by se rozsypala.
+            .then((c) => Promise.all(ASSETS.map((url) => fresh(url).then((res) => {
+                if (!res.ok) throw new Error(`${url} → ${res.status}`);
+                return c.put(url, res);
+            }))))
+            .then(() => self.skipWaiting())
     );
 });
 
@@ -50,9 +70,12 @@ self.addEventListener('fetch', (e) => {
      * stranou, offline se sáhne do cache. Kdyby to bylo naopak (cache-first),
      * upravený level by se po reloadu vůbec nenačetl – hrála by se stará verze
      * z cache, dokud se nezvýší číslo `CACHE`.
+     *
+     * „Ze sítě“ musí platit doslova, proto `fresh()` obchází cache prohlížeče –
+     * jinak by se nová verze na mobilu objevila až po vypršení `max-age`.
      */
     e.respondWith(
-        fetch(req)
+        fresh(req.url)
             .then((res) => {
                 if (res.ok) {
                     const copy = res.clone();
