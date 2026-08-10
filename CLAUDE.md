@@ -118,8 +118,8 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   lávovou řeku a celý obraz rozvlní horkým vzduchem, téma `'desert'` staví místo
   hrotů ze země kaktusy, místo hrotů ze stropu poletující supy, bloky mění
   v pískovec, do pozadí dá duny se sluncem v prachu a taky se vlní horkem.
-  Témata jsou **jen vzhled** – nesahají na fyziku ani na hitboxy.
-  Drží je `LEVEL_THEMES` v generátoru.
+  Téma navíc určuje **motiv hudby** (`THEMES` v `audio.js`) – na fyziku ani
+  hitboxy ale nesahá. Drží je `LEVEL_THEMES` v generátoru.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen
@@ -186,17 +186,33 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
-- Akordový úder (`#stab`) je jediné místo, kde zazní celá harmonie naráz – basa
-  drží jen základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
+- **Každé téma prostředí má vlastní motiv** – drží ho `THEMES` (stupnice,
+  harmonie, základní tóny, tempo, akord, filtr, dozvuk) a k němu dvojice
+  „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
+  zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
+  basou a opakovaným riffem, `desert` ruční bubny (dum–tek) s drónem a ozdobnými
+  běhy na píšťalu. Nástroje jsou sdílené stavební kameny (`#bassGrowl`, `#bell`,
+  `#reed`, `#pluck`, `#dum`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen
+  o tom, co kdy zazní.
+- Akord je v každém tématu jiný (`#stab`, `#swell`, `#powerStab`, `#strum`), ale
+  všude je to **jediné místo, kde zazní celá harmonie naráz** – basa drží jen
+  základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
-  ležící hlas se tam zkoušel a překážel.
+  ležící hlas se tam zkoušel a překážel (výjimkou je pouštní drón, který má
+  prázdný střed držet záměrně).
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
-  stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.
-- `setTrack(levelIndex, speedPct)` si z čísla levelu odvodí stupnici i harmonii
-  a melodii složí z generátoru náhodných čísel nasazeného na index levelu – každý
-  level tak zní jinak, ale pokaždé stejně. Tempo se počítá z rychlosti levelu,
+  stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost
+  `cutoff`/`gain` v motivu tématu.
+- `setTrack(levelIndex, speedPct, theme)` vybere motiv podle tématu a z čísla
+  levelu v něm odvodí stupnici, harmonii i základní tón – proto mají pole motivu
+  čtyři prvky, aby dva levely stejného tématu (3 a 6, 8 a 10) nesáhly na totéž.
+  Melodii složí z generátoru náhodných čísel nasazeného na index levelu, takže
+  každý level zní jinak, ale pokaždé stejně. Tempo se počítá z rychlosti levelu,
   takže rychlejší kolo hraje rychleji.
+- Nastavení motivu do grafu přenáší `#applyTrack` – volá ho `setTrack` i `unlock`.
+  Level se totiž načte dřív, než smí vzniknout AudioContext, takže bez volání
+  z `unlock()` by první skladba hrála s cizím dozvukem a filtrem.
 - `Game.loop` každý snímek nastaví `setMusicOn(state === 'playing')`; stav hudby
   se tak neroztahuje po celém kódu. `setTrack` v `loadLevel` vrací skladbu na
   začátek, takže po smrti hraje znovu od začátku.

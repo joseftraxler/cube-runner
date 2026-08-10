@@ -59,19 +59,28 @@ ale doletí dál – a času na reakci je míň.
 ## Zvuk
 
 Hra nepoužívá žádné zvukové soubory – **efekty i hudba se skládají za běhu**
-přes Web Audio API (oscilátory a šum). Každá úroveň má vlastní mollovou stupnici,
+přes Web Audio API (oscilátory a šum). Každá úroveň má vlastní stupnici,
 harmonii i tempo odvozené od své rychlosti, takže s obtížností roste i tah hudby.
 
+**Každé prostředí hraje po svém.** Motiv se řídí tématem úrovně – nemění se jen
+barvy, ale i nástroje a styl:
+
+| Prostředí        | Jak zní                                                                 |
+|------------------|-------------------------------------------------------------------------|
+| bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
+| ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
+| sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
+| poušť            | ruční bubny dum–tek, ležící drón a ozdobné běhy na píšťalu s vibratem    |
+
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
-temná basa s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
-hi-hat, melodie s dozvukem a **akordové údery** – krátký mollový akord z
-rozladěných pil, kterému se s úderem otevře a hned zase přivře filtr. Je to
-jediné místo, kde ve skladbě zazní celá harmonie naráz (basa drží jen základní
-tón, melodie je jednohlas), takže střední pásmo dostane tělo. Padají každý druhý
-takt jako interpunkce, v nejvyšším stupni se přidá ještě synkopovaná odpověď.
-Po nadpoloviční části se přidá arpeggio a filtr se otevře naplno. Každý přechod
-podtrhne činel s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
-jak se ti daří.
+podklad s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
+melodie s dozvukem a **akordové údery** – krátký akord, kterému se s úderem
+otevře a hned zase přivře filtr. Je to jediné místo, kde ve skladbě zazní celá
+harmonie naráz (basa drží jen základní tón, melodie je jednohlas), takže střední
+pásmo dostane tělo. Padají každý druhý takt jako interpunkce, v nejvyšším stupni
+se přidá ještě synkopovaná odpověď. Po nadpoloviční části se přidá arpeggio
+a filtr se otevře naplno. Každý přechod podtrhne činel s nájezdem. Po smrti se
+intenzita vrátí na začátek – hudba tak přímo odráží, jak se ti daří.
 
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
 Ztlumení klávesou `M` se pamatuje do příště.

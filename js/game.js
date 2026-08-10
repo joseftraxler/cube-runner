@@ -67,7 +67,8 @@ export class Game {
         this.camX = 0;
         this.padKey = null;     // odrazová plošina, na které kostka právě stojí
 
-        this.sound.setTrack(this.levelIndex, this.level.speed);
+        // Motiv hudby se řídí tématem prostředí – led zní jinak než oheň
+        this.sound.setTrack(this.levelIndex, this.level.speed, this.level.theme);
 
         if (this.tile) this.resize();
     }
