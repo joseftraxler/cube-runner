@@ -30,6 +30,7 @@ const controls = {
     'pause': ['escape', 'keyP'],
     'restart': ['keyR'],
     'mute': ['keyM'],
+    'haptics': ['keyH'],
 };
 
 // Instance je dostupná i z konzole prohlížeče – hodí se na ladění

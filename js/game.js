@@ -5,6 +5,7 @@ import {Orbiter, BALL_RADIUS} from "./entities/orbiter.js";
 import {BASE_SPEED, CUBE, HIT, PAD_BOOST} from "./physics.js";
 import {buildKeyMap, actionForEvent} from "./input.js";
 import {Sound} from "./audio.js";
+import {Haptics} from "./haptics.js";
 
 // Výška horního pruhu s ukazatelem postupu a statistikami (px)
 const HUD = 54;
@@ -12,8 +13,9 @@ const HUD = 54;
 // Minimální počet políček viditelných na šířku – aby šlo reagovat na překážky
 const MIN_VIEW_TILES = 18;
 
-// Šířka rohu vpravo nahoře, kterým se ťuknutím přepíná zvuk (px)
-const MUTE_ZONE = 44;
+// Šířka pruhu jednoho přepínače vpravo nahoře (px) – v rohu je zvuk,
+// hned vedle vibrace. Ikona se kreslí do stejného pruhu, do kterého se ťuká.
+const ICON_ZONE = 44;
 
 const TAU = Math.PI * 2;
 
@@ -39,6 +41,7 @@ export class Game {
         this.holdJump = false;  // drží hráč tlačítko skoku? (GD: drženým skáče dál)
         this.particles = [];
         this.sound = new Sound();
+        this.haptics = new Haptics();
 
         this.loadLevel();
         this.bindInput();
@@ -93,8 +96,8 @@ export class Game {
     }
 
     /**
-     * Zpracuje stisk jedné akce (jump/pause/restart) – společné pro klávesy,
-     * dotyk i myš. Nové vstupy směruj sem, ať se logika neduplikuje.
+     * Zpracuje stisk jedné akce (jump/pause/restart/mute/haptics) – společné pro
+     * klávesy, dotyk i myš. Nové vstupy směruj sem, ať se logika neduplikuje.
      */
     handleAction(action) {
         // Zvuk smí naběhnout až po interakci uživatele (autoplay policy)
@@ -102,6 +105,13 @@ export class Game {
 
         if (action === 'mute') {
             this.sound.toggleMute();
+            return;
+        }
+
+        if (action === 'haptics') {
+            // Zapnutí potvrdí vibrace – na ztlumeném telefonu je to jediná
+            // odezva, podle které hráč pozná, že přepínač zabral
+            if (this.haptics.toggle()) this.haptics.play('ring');
             return;
         }
 
@@ -144,8 +154,11 @@ export class Game {
     bindPointer() {
         const press = (clientX, clientY) => {
             if (clientY >= HUD) return this.handleAction('jump');
-            // pravý roh pruhu = zvuk, zbytek pruhu = pauza
-            this.handleAction(clientX > this.c.width - MUTE_ZONE * 1.5 ? 'mute' : 'pause');
+            // pravý roh pruhu = zvuk, vedle něj vibrace, zbytek pruhu = pauza
+            const fromRight = this.c.width - clientX;
+            if (fromRight < ICON_ZONE) return this.handleAction('mute');
+            if (this.haptics.supported && fromRight < ICON_ZONE * 2) return this.handleAction('haptics');
+            this.handleAction('pause');
         };
 
         this.c.addEventListener('touchstart', e => {
@@ -164,11 +177,21 @@ export class Game {
         window.addEventListener('mouseup', () => this.handleRelease('jump'));
     }
 
+    /**
+     * Ohlásí událost všem zpětným vazbám naráz – zvuku i vibracím. Obě znají
+     * stejná jména událostí, takže je vždycky cítit přesně to, co je slyšet
+     * (a u nové události se nedá na jednu z nich zapomenout).
+     */
+    feedback(name) {
+        this.sound.play(name);
+        this.haptics.play(name);
+    }
+
     // Skok ze země, nebo ve vzduchu z prstence
     tryJump() {
         if (this.player.onGround) {
             this.player.jump();
-            this.sound.play('jump');
+            this.feedback('jump');
             return;
         }
 
@@ -176,7 +199,7 @@ export class Game {
         if (ring) {
             this.usedRings.add(ring);
             this.player.jump();
-            this.sound.play('ring');
+            this.feedback('ring');
         }
     }
 
@@ -205,7 +228,7 @@ export class Game {
     }
 
     die() {
-        this.sound.play('death');
+        this.feedback('death');
         this.spawnExplosion();
         this.state = 'dying';
         this.stateTimer = 0.75;
@@ -268,7 +291,7 @@ export class Game {
         // Držené tlačítko skáče znovu hned po dopadu (jako v Geometry Dash)
         if (this.holdJump && this.player.onGround) {
             this.player.jump();
-            this.sound.play('jump');
+            this.feedback('jump');
         }
 
         this.player.step(dt);
@@ -295,7 +318,7 @@ export class Game {
             this.best = 1;
             this.score += 1000;
             this.state = (this.levelIndex >= this.levels.length - 1) ? 'won' : 'levelComplete';
-            this.sound.play(this.state === 'won' ? 'win' : 'complete');
+            this.feedback(this.state === 'won' ? 'win' : 'complete');
         }
 
         this.updateCamera();
@@ -343,8 +366,8 @@ export class Game {
                 case 'gravityDown':
                 case 'gravityUp': {
                     const gravity = trigger === 'gravityUp' ? -1 : 1;
-                    // Portál se drží stisknutý celý průlet – zvuk jen při změně
-                    if (this.player.gravity !== gravity) this.sound.play('portal');
+                    // Portál se drží stisknutý celý průlet – odezva jen při změně
+                    if (this.player.gravity !== gravity) this.feedback('portal');
                     this.player.gravity = gravity;
                     break;
                 }
@@ -353,7 +376,7 @@ export class Game {
         }
 
         // Plošina odrazí kostku každý snímek dotyku, zaznít má ale jen jednou
-        if (pad && pad !== this.padKey) this.sound.play('pad');
+        if (pad && pad !== this.padKey) this.feedback('pad');
         this.padKey = pad;
     }
 
@@ -375,7 +398,7 @@ export class Game {
                 this.level.takeCoin(x, y)) {
                 this.coins++;
                 this.score += 100;
-                this.sound.play('coin');
+                this.feedback('coin');
             }
         }
     }
@@ -1494,16 +1517,25 @@ export class Game {
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.round(this.progress * 100)} %`, this.c.width / 2, barY + barH + 6);
 
+        // Přepínače v pravém rohu – na dotykových zařízeních zároveň tlačítka.
+        // Vibrace se ukazují jen tam, kde je prohlížeč umí (na desktopu by to
+        // byl přepínač ničeho).
+        const switches = this.haptics.supported ? 2 : 1;
+        const textY = barY + barH + 6;
+
         ctx.textAlign = 'right';
         ctx.fillText(
             `POKUS ${this.attempts} · 🪙 ${this.coins}/${this.level.coinCount} · ${this.score}`,
-            this.c.width - pad - MUTE_ZONE, barY + barH + 6
+            this.c.width - pad - ICON_ZONE * switches, textY
         );
 
-        // Stav zvuku – na dotykových zařízeních je to zároveň tlačítko
-        ctx.textAlign = 'right';
         ctx.globalAlpha = this.sound.muted ? 0.5 : 1;
-        ctx.fillText(this.sound.muted ? '🔇' : '🔊', this.c.width - pad, barY + barH + 6);
+        ctx.fillText(this.sound.muted ? '🔇' : '🔊', this.c.width - pad, textY);
+
+        if (this.haptics.supported) {
+            ctx.globalAlpha = this.haptics.enabled ? 1 : 0.5;
+            ctx.fillText('📳', this.c.width - pad - ICON_ZONE, textY);
+        }
         ctx.globalAlpha = 1;
     }
 
@@ -1515,7 +1547,8 @@ export class Game {
         switch (this.state) {
             case 'ready':
                 title = `LEVEL ${this.levelIndex + 1}`;
-                subtitle = 'Mezerník / ťuknutí = skok · P = pauza · R = restart · M = zvuk';
+                subtitle = 'Mezerník / ťuknutí = skok · P = pauza · R = restart · M = zvuk'
+                    + (this.haptics.supported ? ' · H = vibrace' : '');
                 break;
             case 'paused':
                 title = 'PAUZA';

@@ -66,8 +66,8 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
   odsimulovat a playtest by se s hrou rozešel.
 
 Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
-`input.js` (mapování kláves na akce), `audio.js` (zvuk), `scripts.js` (bootstrap –
-canvas, seznam levelů, ovládání, spuštění).
+`input.js` (mapování kláves na akce), `audio.js` (zvuk), `haptics.js` (vibrace),
+`scripts.js` (bootstrap – canvas, seznam levelů, ovládání, spuštění).
 
 Instance hry visí na `window.cubeRunner` – sahá po ní ladění v konzoli i nástroje
 (`playtest.mjs`, `screenshot.mjs`, `audiotest.mjs`), takže ji tam nech.
@@ -75,10 +75,13 @@ Instance hry visí na `window.cubeRunner` – sahá po ní ladění v konzoli i 
 ## Ovládání
 
 Klávesy, dotyk i myš vedou do jedné metody `Game.handleAction(action)` (action =
-`jump`/`pause`/`restart`/`mute`), puštění tlačítka do `Game.handleRelease(action)`.
+`jump`/`pause`/`restart`/`mute`/`haptics`), puštění tlačítka do
+`Game.handleRelease(action)`.
 Klávesnice mapuje přes `input.js`, dotyk a myš řeší `Game.bindPointer` (horní pruh
-= pauza, jeho pravý roh = zvuk, zbytek plochy = skok). Nové vstupy směruj taky tam,
-ať se logika neduplikuje.
+= pauza, jeho pravý roh = zvuk, pruh vedle = vibrace, zbytek plochy = skok). Nové
+vstupy směruj taky tam, ať se logika neduplikuje. Přepínače v rohu HUD se kreslí
+do stejně širokých pruhů (`ICON_ZONE`), do jakých se ťuká – ikona i dotyková
+plocha tak drží pohromadě.
 
 Držené tlačítko skoku (`holdJump`) skáče znovu hned po dopadu – řeší to `Game.update`,
 ne `Player`.
@@ -224,6 +227,24 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   začátek, takže po smrti hraje znovu od začátku.
 - Ztlumení se pamatuje v `localStorage` a je řešené hlasitostí (ne přeskočením
   kódu), aby se i ztlumeně pořád testovaly stejné cesty.
+
+## Vibrace
+
+`js/haptics.js` (třída `Haptics`) přidává ke zvuku haptickou odezvu přes
+`navigator.vibrate`. Vazba je stejná jako u zvuku: `Game` říká, co se stalo,
+haptika o hře nic neví.
+
+- **Události hlas i vibrace dostávají jedním voláním `Game.feedback(name)`**,
+  ne dvěma vedle sebe – jinak by u nové události snadno zůstala jen jedna z nich.
+  Jména událostí jsou proto v `Sound.play` a `Haptics.play` stejná.
+- Vzory (`PATTERNS`) jsou krátké a jejich délka nese význam: skok je ťuknutí,
+  smrt otřes, cíl fanfára. Delší vzory nedávají smysl – motor se rozjíždí
+  i doběhává, takže by se slily v hučení a nebylo by poznat, co se stalo.
+- Bez podpory (`navigator.vibrate` chybí) se přepínač ani nekreslí, ani nereaguje
+  – přepínal by nic. Zapnutí se proto potvrdí vibrací, jinak by na ztlumeném
+  telefonu nebylo poznat, že tlačítko zabralo.
+- Stav se pamatuje v `localStorage` (klíč `cube-runner-haptics`, výchozí zapnuto),
+  vypnutí rozehraný vzor rovnou umlčí (`vibrate(0)`).
 
 ## PWA / offline
 
