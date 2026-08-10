@@ -505,18 +505,21 @@ export class Game {
      * Přenese hotový obraz světa po vodorovných pruzích, každý posunutý podle
      * sinusovky – vypadá to jako chvění vzduchu nad ohněm. Dole u lávy se vlní
      * víc než nahoře. Pruh se kreslí o kus širší, aby na krajích nevznikly mezery.
+     *
+     * Výchylka je schválně sotva znatelná (do zlomku políčka): má to být pocit
+     * horka na okraji vidění, ne rozostřená hra – hráč musí přesně vidět, kam skáče.
      */
     drawHeatHaze() {
         const ctx = this.ctx;
         const w = this.c.width;
         const h = this.c.height;
         const band = Math.max(4, Math.round(h / 110));
-        const amp = Math.max(1.5, this.tile * 0.045);
+        const amp = Math.max(1, this.tile * 0.022);
         const pad = amp * 2;
 
         for (let y = 0; y < h; y += band) {
             const src = Math.min(band, h - y);
-            const dx = Math.sin(this.clock * 2.4 + y * 0.05) * amp * (0.35 + y / h);
+            const dx = Math.sin(this.clock * 2 + y * 0.04) * amp * (0.3 + y / h);
             ctx.drawImage(this.haze, 0, y, w, src, dx - pad, y, w + pad * 2, src);
         }
     }
@@ -564,10 +567,15 @@ export class Game {
         for (let i = 0; i < WEATHER_COUNT; i++) {
             // Bližší vločky jsou větší, rychlejší a víc se posouvají s kamerou
             const depth = 0.35 + noise(i) * 0.65;
-            const speed = (rising ? 55 : 26) * depth;
+            const speed = (rising ? 55 : 32) * depth;
             const travel = (noise(i + 101) * h + this.clock * speed) % h;
             const y = rising ? h - travel : travel;
-            const drift = Math.sin(this.clock * (rising ? 1.6 : 0.7) + i) * 14 * depth;
+            // Vločka se cestou dolů kolébá do stran (dvě sinusovky, ať to není
+            // pravidelné kyvadlo), jiskra jen mírně uhýbá ve stoupavém proudu.
+            // Do stran se vločka nesmí hnát rychleji, než padá – to už není sníh.
+            const drift = rising
+                ? Math.sin(this.clock * 1.6 + i) * 14 * depth
+                : (Math.sin(this.clock * 0.75 + i) * 26 + Math.sin(this.clock * 1.9 + i * 1.7) * 7) * depth;
             const x = wrap(noise(i + 7) * w + drift - this.camX * this.tile * 0.12 * depth, w);
             const r = depth * Math.max(1.2, this.tile * (rising ? 0.028 : 0.038));
 
