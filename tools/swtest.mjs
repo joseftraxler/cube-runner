@@ -65,10 +65,11 @@ try {
 
     // Úprava levelu se musí projevit hned po reloadu, ne až po zvýšení verze cache.
     // Rychlost si přečteme ze souboru, ať test nezávisí na tom, co je v plánu.
-    const before = original.match(/^ {4}(\d+),$/m);
+    // Level s tématem má místo čísla `{speed: 112, theme: 'desert'}` – bereme obojí
+    const before = original.match(/^ {4}(?:\{speed: )?(\d+)/m);
     if (!before) throw new Error('v level3.js jsem nenašel rychlost');
     const bumped = Number(before[1]) + 1;
-    await writeFile(LEVEL, original.replace(before[0], `    ${bumped},`));
+    await writeFile(LEVEL, original.replace(before[0], before[0].replace(before[1], String(bumped))));
     await page.reload();
     await page.waitForFunction(() => !!window.cubeRunner);
     const speed = await page.evaluate(() => window.cubeRunner.levels[2].speed);

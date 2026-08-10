@@ -44,11 +44,16 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
   `animPhase`. `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/
   `Orbiter` ji implementují a **nesahají na `this.game`** – dostanou kontext
   i pozici parametrem. Tuhle nezávislost `draw` na hře zachovej.
-- **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Ohnivé téma si
-  `drawWorld` nechá vykreslit na pomocné plátno a přenese ho po pruzích
-  rozvlněné horkým vzduchem (`drawHeatHaze`) – texty se tím vlnit nesmí.
-  Ozdoby závislé na místě (námraza, fáze plamenů) počítej z `noise(x, y)`,
-  ne z `Math.random()`, jinak budou při posunu kamery poskakovat.
+- **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Horká témata
+  (`Game.hazy` – ohnivé a pouštní) si `drawWorld` nechají vykreslit na pomocné
+  plátno a přenesou ho po pruzích rozvlněné horkým vzduchem (`drawHeatHaze`) –
+  texty se tím vlnit nesmí.
+  Ozdoby závislé na místě (námraza, fáze plamenů, tvar kaktusu) počítej
+  z `noise(x, y)`, ne z `Math.random()`, jinak budou při posunu kamery
+  poskakovat.
+- **Pozadí nesmí zaplnit propast.** Díra v podlaze je smrtelná, takže pod
+  úrovní země patří tma – pouštní duny proto končí u horní hrany podlahy
+  a zbytek plátna `drawDesert` přetře natmavo.
 - **Prvky mapy vyhodnocuje `Game`, ne `Player`.** Odrazovou plošinu a gravitační
   portál řeší `Game.applyTriggers` (volá `player.jump(PAD_BOOST)`, přepíná
   `player.gravity`), prstenec `Game.tryJump`. Kostka o nich nic neví.
@@ -110,8 +115,11 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
 - místo čísla jde předat `{speed, theme}`; téma `'ice'` kreslí hroty jako modré
   krápníky, bloky jako namrzlé a nechá v pozadí padat sníh, téma `'fire'` mění
   hroty ze země v pohyblivé plameny, hroty ze stropu v malé sopky, pod mapu dá
-  lávovou řeku a celý obraz rozvlní horkým vzduchem. Témata jsou **jen vzhled**
-  – nesahají na fyziku ani na hitboxy. Drží je `LEVEL_THEMES` v generátoru.
+  lávovou řeku a celý obraz rozvlní horkým vzduchem, téma `'desert'` staví místo
+  hrotů ze země kaktusy, místo hrotů ze stropu poletující supy, bloky mění
+  v pískovec, do pozadí dá duny se sluncem v prachu a taky se vlní horkem.
+  Témata jsou **jen vzhled** – nesahají na fyziku ani na hitboxy.
+  Drží je `LEVEL_THEMES` v generátoru.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen
