@@ -70,7 +70,7 @@ barvy, ale i nástroje a styl:
 | bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
 | ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
-| poušť            | ruční bubny dum–tek, ležící drón a ozdobné běhy na píšťalu s vibratem    |
+| poušť            | mexické mariachi – guitarrón, odsekávaná kytara, trubky v terciích      |
 
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
 podklad s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
