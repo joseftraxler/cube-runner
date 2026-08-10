@@ -190,16 +190,22 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   harmonie, základní tóny, tempo, akord, filtr, dozvuk) a k němu dvojice
   „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` ruční bubny (dum–tek) s drónem a ozdobnými
-  běhy na píšťalu. Nástroje jsou sdílené stavební kameny (`#bassGrowl`, `#bell`,
-  `#reed`, `#pluck`, `#dum`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen
-  o tom, co kdy zazní.
+  basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, odsekávaná
+  kytara, trubky v terciích, claves a palmas). Nástroje jsou sdílené stavební
+  kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#pluck`, `#guitarron`…), aranžmá
+  (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
+- **Ležící rákosové hlasy zněly jako harmonika, ne jako prostředí.** Pouštní
+  téma je na nich stálo (drón + píšťala s vibratem a portamentem) a vybočovalo;
+  proto je nahradily drnkané a žesťové nástroje. Když do trubky (`#trumpet`)
+  saháš, drž vibrato až na druhou půlku tónu a filtr veď obálkou – jinak se
+  ta harmonika vrátí.
 - Akord je v každém tématu jiný (`#stab`, `#swell`, `#powerStab`, `#strum`), ale
   všude je to **jediné místo, kde zazní celá harmonie naráz** – basa drží jen
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
-  ležící hlas se tam zkoušel a překážel (výjimkou je pouštní drón, který má
-  prázdný střed držet záměrně).
+  ležící hlas se tam zkoušel a překážel. Výjimkou je pouštní kytara: ta odsekává
+  akord na **lehkou** dobu proti guitarrónu na těžké („ta-dá“) a její kvalitu
+  (mollová/durová) řídí stupeň harmonie, jinak by andaluská kadence nebyla poznat.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost
