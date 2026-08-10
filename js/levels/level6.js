@@ -5,7 +5,7 @@ import {Level} from "../level.js";
 // vynutit přegenerování jde přepínačem --force.
 // První argument = rychlost běhu v % základní rychlosti (100 = BASE_SPEED).
 const level6 = new Level(
-    130,
+    {speed: 130, theme: 'desert'},
     "                                                                                                                                                                                                                                                                                                              ",
     "                                                                                                                                                                                                                                                                                                              ",
     "                                                                                                                                                                                                                                                                                                              ",

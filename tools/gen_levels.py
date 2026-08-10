@@ -1212,7 +1212,10 @@ export {{level{n}}};
 
 # Vizuální témata úrovní (viz Level v js/level.js). Bez záznamu = běžný vzhled.
 LEVEL_THEMES = {
+    3: 'desert',    # poušť – kaktusy, supi, pískovec, duny a rozpálený vzduch
     5: 'ice',       # ledová jeskyně – krápníky, namrzlé bloky, padající sníh
+    6: 'desert',    # druhá poušť – má i hroty ze stropu (úsek padtrap), takže se
+                    # v ní kromě kaktusů objeví i supi
     8: 'fire',      # sopečná sloj – plameny, sopky, láva a chvění horkého vzduchu
     10: 'fire',
 }

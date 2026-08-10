@@ -4,11 +4,11 @@ Skákací arkáda ve stylu Geometry Dash napsaná v čistém JavaScriptu (ES mod
 která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez build kroku.
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
-10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, ledová jeskyně,
-sopečná sloj s lávou, odrazové plošiny, skokové prstence, obrácená gravitace –
-a s rostoucí rychlostí i hustotou překážek. Každá stojí na vlastní sadě
-překážek, takže se kola neopakují. Poslední úroveň běží o polovinu rychleji než první a je skoro
-dvaapůlkrát delší.
+10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, poušť s kaktusy,
+ledová jeskyně, sopečná sloj s lávou, odrazové plošiny, skokové prstence,
+obrácená gravitace – a s rostoucí rychlostí i hustotou překážek. Každá stojí na
+vlastní sadě překážek, takže se kola neopakují. Poslední úroveň běží o polovinu
+rychleji než první a je skoro dvaapůlkrát delší.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory.
 
@@ -141,7 +141,9 @@ Místo čísla jde předat i `{speed, theme}` a dát úrovni vizuální téma. `
 kreslí hroty jako modré krápníky, bloky jako namrzlé a nechá padat sníh (tak
 vypadá 5. úroveň), `'fire'` mění hroty ze země v pohyblivé plameny, hroty ze
 stropu v malé sopky, pod mapu položí lávovou řeku a obraz rozvlní horkým
-vzduchem (8. a 10. úroveň). Téma je jen vzhled – hraje se pořád stejně:
+vzduchem (8. a 10. úroveň) a `'desert'` staví místo hrotů ze země kaktusy, místo
+hrotů ze stropu poletující supy, bloky mění v pískovec a do pozadí dá duny se
+sluncem v prachu (3. a 6. úroveň). Téma je jen vzhled – hraje se pořád stejně:
 
 ```js
 import {Level} from "../level.js";

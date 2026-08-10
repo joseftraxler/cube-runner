@@ -221,8 +221,8 @@ export class Game {
         this.tile = Math.max(1, Math.min(availH / rows, this.c.width / MIN_VIEW_TILES));
         this.offsetY = HUD + (availH - this.tile * rows) / 2 - this.level.viewTop * this.tile;
 
-        // Ohnivé téma kreslí svět stranou, aby se dal rozvlnit horkým vzduchem
-        if (this.level.theme === 'fire') {
+        // Horká témata kreslí svět stranou, aby se dal rozvlnit horkým vzduchem
+        if (this.hazy) {
             this.haze ??= document.createElement('canvas');
             this.haze.width = this.c.width;
             this.haze.height = this.c.height;
@@ -459,17 +459,24 @@ export class Game {
     }
 
     // Barevný odstín se s každým levelem posouvá – každý level vypadá jinak.
-    // Level s tématem si odstín určuje sám (ledový studeně modrý, ohnivý rudý).
+    // Level s tématem si odstín určuje sám (ledový studeně modrý, ohnivý rudý,
+    // pouštní pískový).
     get hue() {
         if (this.level.theme === 'ice') return 194;
         if (this.level.theme === 'fire') return 14;
+        if (this.level.theme === 'desert') return 32;
         return (205 + this.levelIndex * 31) % 360;
     }
 
+    // Témata, ve kterých je horko – obraz se rozvlní chvěním vzduchu
+    get hazy() {
+        return this.level.theme === 'fire' || this.level.theme === 'desert';
+    }
+
     render() {
-        // V ohnivém tématu se svět nakreslí stranou a na plátno se přenese
+        // V horkých tématech se svět nakreslí stranou a na plátno se přenese
         // rozvlněný horkým vzduchem. HUD a překryv se nevlní, ať jdou číst.
-        const hazed = this.level.theme === 'fire' && this.hazeCtx;
+        const hazed = this.hazy && this.hazeCtx;
         const main = this.ctx;
 
         if (hazed) this.ctx = this.hazeCtx;
@@ -514,7 +521,8 @@ export class Game {
         const w = this.c.width;
         const h = this.c.height;
         const band = Math.max(4, Math.round(h / 110));
-        const amp = Math.max(1, this.tile * 0.022);
+        // Nad pouští se vzduch chvěje míň než nad ohněm
+        const amp = Math.max(1, this.tile * (this.level.theme === 'desert' ? 0.014 : 0.022));
         const pad = amp * 2;
 
         for (let y = 0; y < h; y += band) {
@@ -527,6 +535,12 @@ export class Game {
     drawBackground() {
         const ctx = this.ctx;
         const h = this.hue;
+
+        // Poušť má místo mřížky vlastní obzor – duny, stolové hory a slunce
+        if (this.level.theme === 'desert') {
+            this.drawDesert();
+            return;
+        }
 
         const grad = ctx.createLinearGradient(0, 0, 0, this.c.height);
         grad.addColorStop(0, `hsl(${h}, 55%, 20%)`);
@@ -594,6 +608,176 @@ export class Game {
     }
 
     /**
+     * Pouštní obzor. Nebe je nahoře tmavé (aby šel číst HUD) a u země rozpálené
+     * do oranžova. Před ním stojí slunce v oparu, stolové hory a dvě vrstvy dun –
+     * každá se posouvá jinou rychlostí (parallax) a ta vzdálenější je světlejší,
+     * protože ji vybledne prach ve vzduchu.
+     *
+     * Všechno se opírá o horní hranu podlahy: níž už kreslí bloky, takže se tam
+     * pozadí stejně neuvidí. Pod tou hranou je schválně tma – dírou v podlaze
+     * musí být vidět, že se propadá do prázdna, ne do písku.
+     */
+    drawDesert() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+        const ground = this.py(this.level.height - 2);
+
+        const sky = ctx.createLinearGradient(0, 0, 0, Math.max(ground, 1));
+        sky.addColorStop(0, 'hsl(22, 50%, 16%)');
+        sky.addColorStop(0.5, 'hsl(30, 58%, 30%)');
+        sky.addColorStop(1, 'hsl(38, 70%, 47%)');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, w, h);
+
+        this.drawSun(ground);
+        this.drawSkyVultures();
+        this.drawMesas(ground);
+        this.drawDunes(ground);
+        this.drawSandDust();
+
+        ctx.fillStyle = 'hsl(26, 45%, 6%)';
+        ctx.fillRect(0, ground, w, h - ground);
+    }
+
+    // Slunce v prachovém oparu. Je daleko, takže se s kamerou neposouvá vůbec.
+    drawSun(ground) {
+        const ctx = this.ctx;
+        const cx = this.c.width * 0.74;
+        const cy = ground * 0.42;
+        const r = Math.max(this.tile * 1.05, 18);
+
+        const glow = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 4.5);
+        glow.addColorStop(0, 'rgba(255, 224, 150, 0.42)');
+        glow.addColorStop(1, 'rgba(255, 190, 90, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 4.5, 0, TAU);
+        ctx.fill();
+
+        // Kotouč má měkký okraj – slunce prosvítá prachem, nemá ostrou hranu
+        const disc = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+        disc.addColorStop(0, 'rgba(255, 244, 210, 0.92)');
+        disc.addColorStop(0.75, 'rgba(255, 232, 180, 0.8)');
+        disc.addColorStop(1, 'rgba(255, 220, 150, 0)');
+        ctx.fillStyle = disc;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, TAU);
+        ctx.fill();
+    }
+
+    /**
+     * Supi kroužící vysoko na obloze. Je to jen kulisa, ne překážka – proto
+     * jsou schválně malí, průsvitní a drží se u horního okraje, aby si je
+     * hráč nespletl se supem visícím přímo v dráze kostky.
+     */
+    drawSkyVultures() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+
+        ctx.strokeStyle = 'rgba(38, 22, 14, 0.45)';
+        ctx.lineCap = 'round';
+
+        for (let i = 0; i < 3; i++) {
+            const depth = 0.5 + noise(i * 31 + 5) * 0.5;
+            // Každý sup krouží po vlastní elipse a vlastní rychlostí
+            const angle = this.clock * (0.2 + noise(i * 7) * 0.16) + noise(i * 13) * TAU;
+            const cx = wrap(noise(i * 17 + 3) * w + Math.cos(angle) * w * 0.13
+                - this.camX * this.tile * 0.05 * depth, w);
+            const cy = h * (0.07 + noise(i * 23 + 9) * 0.15) + Math.sin(angle) * h * 0.025;
+            const s = this.tile * 0.3 * depth;
+            // Křídla se nikdy nesrovnají do roviny, jinak by z ptáka byla čárka
+            const flap = 0.45 + 0.28 * Math.sin(this.clock * 2.4 + i * 2);
+
+            ctx.lineWidth = Math.max(s * 0.16, 1);
+            ctx.beginPath();
+            ctx.moveTo(cx - s, cy);
+            ctx.quadraticCurveTo(cx - s * 0.5, cy - s * flap, cx, cy);
+            ctx.quadraticCurveTo(cx + s * 0.5, cy - s * flap, cx + s, cy);
+            ctx.stroke();
+        }
+
+        ctx.lineCap = 'butt';
+    }
+
+    // Stolové hory na obzoru – nejvzdálenější vrstva, sotva odlišená od nebe
+    drawMesas(ground) {
+        const ctx = this.ctx;
+        const span = this.c.width + this.tile * 14;
+        const shift = this.camX * this.tile * 0.07;
+
+        ctx.fillStyle = 'hsla(18, 38%, 30%, 0.55)';
+        for (let i = 0; i < 8; i++) {
+            const bw = this.tile * (2.4 + noise(i * 3 + 1) * 3.4);
+            const bh = this.tile * (1.1 + noise(i * 7 + 5) * 1.7);
+            const cx = wrap(noise(i * 11 + 3) * span - shift, span) - this.tile * 7;
+            const top = ground - bh;
+
+            ctx.beginPath();
+            ctx.moveTo(cx - bw * 0.62, ground);
+            ctx.lineTo(cx - bw * 0.42, top);
+            ctx.lineTo(cx + bw * 0.42, top);
+            ctx.lineTo(cx + bw * 0.62, ground);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    // Dvě vrstvy dun – bližší je tmavší a posouvá se rychleji
+    drawDunes(ground) {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const layers = [
+            {depth: 0.13, rise: 1.7, wave: 0.0052, color: 'hsl(32, 50%, 34%)'},
+            {depth: 0.28, rise: 0.9, wave: 0.0088, color: 'hsl(26, 46%, 23%)'},
+        ];
+
+        for (const {depth, rise, wave, color} of layers) {
+            const shift = this.camX * this.tile * depth;
+            const crest = ground - this.tile * rise;
+
+            ctx.beginPath();
+            ctx.moveTo(0, ground + this.tile);
+            for (let x = 0; x <= w; x += 8) {
+                const s = (x + shift) * wave;
+                ctx.lineTo(x, crest + Math.sin(s) * this.tile * 0.5
+                    + Math.sin(s * 2.3 + 1.7) * this.tile * 0.24);
+            }
+            ctx.lineTo(w, ground + this.tile);
+            ctx.closePath();
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+    }
+
+    /**
+     * Zrnka písku hnaná větrem kostce v zádech. Polohy se počítají z hodin
+     * a stálého šumu podle pořadí zrnka, takže není potřeba držet stav.
+     */
+    drawSandDust() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+
+        for (let i = 0; i < WEATHER_COUNT; i++) {
+            // Bližší zrnka jsou větší, rychlejší a víc se posouvají s kamerou
+            const depth = 0.35 + noise(i) * 0.65;
+            const x = wrap(noise(i + 41) * w + this.clock * 130 * depth
+                - this.camX * this.tile * 0.22 * depth, w);
+            const y = wrap(noise(i + 73) * h + Math.sin(this.clock * 0.9 + i * 2.1) * 10 * depth, h);
+            const r = depth * Math.max(1, this.tile * 0.022);
+
+            ctx.globalAlpha = 0.12 + depth * 0.22;
+            ctx.fillStyle = '#ffe6b0';
+            // Zrnko se za letu rozmázne do vodorovné čárky
+            ctx.fillRect(x, y, r * (3 + depth * 4), r);
+        }
+
+        ctx.globalAlpha = 1;
+    }
+
+    /**
      * Lávová řeka pod úrovní země. Hladina se vlní a posouvá, přes propasti
      * v podlaze je vidět dolů do ní.
      */
@@ -655,6 +839,7 @@ export class Game {
             for (let x = from; x < to; x++) {
                 if (this.level.isSolid(x, y)) {
                     if (this.level.theme === 'ice') this.drawIceBlock(x, y);
+                    else if (this.level.theme === 'desert') this.drawSandBlock(x, y);
                     else this.drawBlock(x, y);
                 }
 
@@ -742,13 +927,76 @@ export class Game {
         }
     }
 
-    // Hrot podle tématu: ledový krápník, plamen/sopka v ohnivém, jinak klasický
+    /**
+     * Pískovcový blok. Vrstvy i zrno jsou stálá funkce souřadnic políčka
+     * (šum podle x, y), takže při posunu kamery neposkakují.
+     */
+    drawSandBlock(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+
+        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        grad.addColorStop(0, 'hsl(33, 42%, 41%)');
+        grad.addColorStop(1, 'hsl(24, 40%, 26%)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px, py, t + 1, t + 1);
+
+        // Vodorovné vrstvy usazeného pískovce – jen naznačené, ať z bloku
+        // nejsou prkna
+        ctx.strokeStyle = 'rgba(255, 226, 180, 0.12)';
+        ctx.lineWidth = Math.max(t * 0.04, 1);
+        ctx.beginPath();
+        for (let i = 0; i < 2; i++) {
+            const ly = py + t * (0.34 + i * 0.3 + noise(x * 19 + y * 7 + i * 31) * 0.14);
+            ctx.moveTo(px, ly);
+            ctx.lineTo(px + t, ly + t * 0.05 * (noise(x * 5 + y * 23 + i) - 0.5));
+        }
+        ctx.stroke();
+
+        // Zrno – pár tmavších oblázků zapadlých v písku
+        ctx.fillStyle = 'rgba(60, 36, 20, 0.3)';
+        for (let i = 0; i < 3; i++) {
+            const gx = px + t * (0.15 + noise(x * 13 + y * 3 + i * 17) * 0.7);
+            const gy = py + t * (0.2 + noise(x * 29 + y * 11 + i * 7) * 0.65);
+            ctx.fillRect(gx, gy, Math.max(t * 0.05, 1), Math.max(t * 0.04, 1));
+        }
+
+        // Obrys je měkčí než u ostatních témat – ostrá linka by z pískovce
+        // udělala bednu. Hranu, na kterou se doskakuje, stejně nese navátý písek.
+        ctx.strokeStyle = 'rgba(245, 210, 155, 0.4)';
+        ctx.lineWidth = Math.max(t * 0.05, 1);
+        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+
+        // Na volné horní hraně leží navátý písek – zároveň je líp vidět, kam se doskočí
+        if (!this.level.isSolid(x, y - 1)) {
+            ctx.fillStyle = '#f2d29b';
+            ctx.fillRect(px, py, t + 1, Math.max(t * 0.11, 2));
+            // Vlnky ve vrstvě písku, ať hrana není jako pravítko
+            ctx.beginPath();
+            ctx.moveTo(px, py + t * 0.15);
+            for (let i = 0; i < 3; i++) {
+                const cx = px + t * (0.17 + i * 0.33);
+                ctx.quadraticCurveTo(cx, py + t * (0.05 + noise(x * 7 + y + i * 23) * 0.08),
+                    cx + t * 0.165, py + t * 0.15);
+            }
+            ctx.lineTo(px, py + t * 0.15);
+            ctx.fill();
+        }
+    }
+
+    // Hrot podle tématu: ledový krápník, plamen/sopka v ohnivém,
+    // kaktus/sup v pouštním, jinak klasický
     drawHazard(x, y, up) {
         if (this.level.theme === 'ice') {
             this.drawIcicle(x, y, up);
         } else if (this.level.theme === 'fire') {
             if (up) this.drawFlame(x, y);
             else this.drawVolcano(x, y);
+        } else if (this.level.theme === 'desert') {
+            if (up) this.drawCactus(x, y);
+            else this.drawVulture(x, y);
         } else {
             this.drawSpike(x, y, up);
         }
@@ -934,6 +1182,176 @@ export class Game {
             ctx.fill();
         }
         ctx.globalAlpha = 1;
+    }
+
+    /**
+     * Kaktus – pouštní obdoba hrotu ze země. Tvar (počet a výška ramen, květ)
+     * se losuje ze šumu podle políčka, takže je kaktus od kaktusu jiný, ale
+     * pořád stejný. Kmen i ramena zůstávají v mezích políčka, stejně jako hrot.
+     */
+    drawCactus(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const base = this.py(y + 1);
+        const cx = px + t * 0.5;
+        const top = base - t * 0.94;
+        const seed = noise(x * 13 + y * 7);
+        const width = t * 0.26;
+
+        // Kmen a ramena jsou jedna tlustá čára se zaoblenými konci
+        const body = () => {
+            ctx.beginPath();
+            ctx.moveTo(cx, base);
+            ctx.lineTo(cx, top);
+            // Levé rameno má každý kaktus, pravé jen některý (a výš)
+            ctx.moveTo(cx, base - t * 0.42);
+            ctx.lineTo(cx - t * 0.26, base - t * 0.42);
+            ctx.lineTo(cx - t * 0.26, base - t * 0.66);
+            if (seed > 0.4) {
+                ctx.moveTo(cx, base - t * 0.56);
+                ctx.lineTo(cx + t * 0.25, base - t * 0.56);
+                ctx.lineTo(cx + t * 0.25, base - t * 0.74);
+            }
+        };
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        body();
+        ctx.strokeStyle = '#14300f';
+        ctx.lineWidth = width + Math.max(t * 0.06, 2);
+        ctx.stroke();
+
+        const grad = ctx.createLinearGradient(px, 0, px + t, 0);
+        grad.addColorStop(0, '#71b155');
+        grad.addColorStop(0.45, '#4a8c3c');
+        grad.addColorStop(1, '#2c5c2c');
+        body();
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = width;
+        ctx.stroke();
+
+        // Žebra kmene a trny
+        ctx.strokeStyle = 'rgba(20, 60, 20, 0.45)';
+        ctx.lineWidth = Math.max(t * 0.02, 1);
+        ctx.beginPath();
+        ctx.moveTo(cx - width * 0.22, base - t * 0.06);
+        ctx.lineTo(cx - width * 0.22, top + t * 0.06);
+        ctx.moveTo(cx + width * 0.22, base - t * 0.06);
+        ctx.lineTo(cx + width * 0.22, top + t * 0.08);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(240, 235, 200, 0.7)';
+        ctx.beginPath();
+        for (let i = 0; i < 4; i++) {
+            const sy = base - t * (0.12 + i * 0.2);
+            ctx.moveTo(cx - width * 0.5, sy);
+            ctx.lineTo(cx - width * 0.78, sy - t * 0.03);
+            ctx.moveTo(cx + width * 0.5, sy - t * 0.06);
+            ctx.lineTo(cx + width * 0.78, sy - t * 0.09);
+        }
+        ctx.stroke();
+
+        // Občas kaktus kvete
+        if (seed < 0.28) {
+            ctx.fillStyle = '#ff6f91';
+            ctx.beginPath();
+            ctx.arc(cx, top - t * 0.02, width * 0.34, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+    }
+
+    /**
+     * Sup – pouštní obdoba hrotu ze stropu. Visí na jednom místě, mává křídly
+     * a mírně se přitom houpe; rozpětí i houpání zůstávají v políčku, aby bylo
+     * poznat, kudy se pod ním dá proletět. Fáze mávání je daná políčkem, takže
+     * každý pták mává po svém, ale pořád stejně.
+     *
+     * Barvy jsou skoro černé a obrys světlý: překážka musí být na pískovém
+     * pozadí vidět na první pohled, stejně jako je vidět rudý hrot.
+     */
+    drawVulture(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const cx = this.px(x + 0.5);
+        const phase = noise(x * 5 + y * 17) * TAU;
+        const flap = Math.sin(this.clock * 5.5 + phase);
+        const cy = this.py(y) + t * 0.36 + flap * t * 0.04;
+        const lift = flap * t * 0.16;
+
+        ctx.strokeStyle = 'rgba(255, 230, 185, 0.5)';
+        ctx.lineWidth = Math.max(t * 0.018, 1);
+        ctx.lineJoin = 'round';
+
+        // Křídla: od těla k špičce a zpátky spodní hranou (mává se nahoru dolů).
+        // Na konci mají roztřepená pera, podle kterých je sup poznat i takhle malý.
+        for (const dir of [-1, 1]) {
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - t * 0.05);
+            ctx.quadraticCurveTo(cx + dir * t * 0.18, cy - t * 0.16 - lift,
+                cx + dir * t * 0.34, cy - t * 0.13 - lift);
+            ctx.lineTo(cx + dir * t * 0.45, cy - t * 0.12 - lift);
+            ctx.lineTo(cx + dir * t * 0.36, cy - t * 0.09 - lift);
+            ctx.lineTo(cx + dir * t * 0.45, cy - t * 0.07 - lift);
+            ctx.lineTo(cx + dir * t * 0.34, cy - t * 0.05 - lift);
+            ctx.quadraticCurveTo(cx + dir * t * 0.17, cy - t * 0.01 - lift * 0.5, cx, cy + t * 0.04);
+            ctx.closePath();
+
+            const feather = ctx.createLinearGradient(cx, cy - t * 0.16 - lift, cx, cy + t * 0.04);
+            feather.addColorStop(0, '#3b2a1d');
+            feather.addColorStop(1, '#16100a');
+            ctx.fillStyle = feather;
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Ocasní pera vzadu (kostka přibíhá zleva, sup je otočený proti ní)
+        ctx.fillStyle = '#1b130c';
+        ctx.beginPath();
+        ctx.moveTo(cx + t * 0.08, cy - t * 0.04);
+        ctx.lineTo(cx + t * 0.27, cy + t * 0.03);
+        ctx.lineTo(cx + t * 0.08, cy + t * 0.07);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Tělo
+        ctx.fillStyle = '#241a11';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, t * 0.13, t * 0.085, 0, 0, TAU);
+        ctx.fill();
+        ctx.stroke();
+
+        // Bílý límec a holá hlava supa
+        ctx.fillStyle = '#e6dcc4';
+        ctx.beginPath();
+        ctx.arc(cx - t * 0.1, cy - t * 0.02, t * 0.048, 0, TAU);
+        ctx.fill();
+
+        ctx.fillStyle = '#c4705a';
+        ctx.beginPath();
+        ctx.arc(cx - t * 0.17, cy - t * 0.06, t * 0.05, 0, TAU);
+        ctx.fill();
+
+        // Zahnutý zobák a oko
+        ctx.fillStyle = '#e8c07a';
+        ctx.beginPath();
+        ctx.moveTo(cx - t * 0.21, cy - t * 0.085);
+        ctx.lineTo(cx - t * 0.29, cy - t * 0.04);
+        ctx.lineTo(cx - t * 0.2, cy - t * 0.02);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#1b1109';
+        ctx.beginPath();
+        ctx.arc(cx - t * 0.175, cy - t * 0.08, Math.max(t * 0.014, 1), 0, TAU);
+        ctx.fill();
+
+        ctx.lineJoin = 'miter';
     }
 
     drawPad(x, y) {
