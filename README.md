@@ -5,9 +5,9 @@ která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez 
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
 10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, ledová jeskyně,
-odrazové plošiny, skokové prstence, obrácená gravitace – a s rostoucí rychlostí
-i hustotou překážek. Každá stojí na vlastní sadě překážek, takže se kola
-neopakují. Poslední úroveň běží o polovinu rychleji než první a je skoro
+sopečná sloj s lávou, odrazové plošiny, skokové prstence, obrácená gravitace –
+a s rostoucí rychlostí i hustotou překážek. Každá stojí na vlastní sadě
+překážek, takže se kola neopakují. Poslední úroveň běží o polovinu rychleji než první a je skoro
 dvaapůlkrát delší.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory.
@@ -137,9 +137,11 @@ vykreslit, zatímco každá entita se stará jen sama o sebe (svůj pohyb a vzhl
 
 Úroveň je instance třídy `Level`. Prvním argumentem je rychlost běhu v procentech
 základní rychlosti (100 = základ, 150 = o polovinu rychleji), následují řádky mapy.
-Místo čísla jde předat i `{speed, theme}` a dát úrovni vizuální téma – `'ice'`
-kreslí hroty jako modré krápníky a obarví celou úroveň do ledova (tak vypadá
-5. úroveň):
+Místo čísla jde předat i `{speed, theme}` a dát úrovni vizuální téma. `'ice'`
+kreslí hroty jako modré krápníky, bloky jako namrzlé a nechá padat sníh (tak
+vypadá 5. úroveň), `'fire'` mění hroty ze země v pohyblivé plameny, hroty ze
+stropu v malé sopky, pod mapu položí lávovou řeku a obraz rozvlní horkým
+vzduchem (8. a 10. úroveň). Téma je jen vzhled – hraje se pořád stejně:
 
 ```js
 import {Level} from "../level.js";

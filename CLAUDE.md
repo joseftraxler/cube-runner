@@ -39,6 +39,11 @@ node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzát
 - `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/`Orbiter` ji
   implementují a **nesahají na `this.game`** – dostanou kontext i pozici
   parametrem. Tuhle nezávislost `draw` na hře zachovej.
+- **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Ohnivé téma si
+  `drawWorld` nechá vykreslit na pomocné plátno a přenese ho po pruzích
+  rozvlněné horkým vzduchem (`drawHeatHaze`) – texty se tím vlnit nesmí.
+  Ozdoby závislé na místě (námraza, fáze plamenů) počítej z `noise(x, y)`,
+  ne z `Math.random()`, jinak budou při posunu kamery poskakovat.
 - **Pohyblivé překážky se hýbou jen ve stavu `playing`** (`Game.update` je krokuje
   až za kontrolou stavu). Jejich `animPhase` je tím pádem přesně odehraný čas
   a poloha je čistá funkce místa v levelu – bez toho by je generátor nemohl
@@ -87,7 +92,10 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   `D`/`U` gravitační portál (dolů/vzhůru), `*` mince, `P` start, `F` cíl,
   mezera = prázdno.
 - místo čísla jde předat `{speed, theme}`; téma `'ice'` kreslí hroty jako modré
-  krápníky a obarví level do ledova. Témata drží `LEVEL_THEMES` v generátoru.
+  krápníky, bloky jako namrzlé a nechá v pozadí padat sníh, téma `'fire'` mění
+  hroty ze země v pohyblivé plameny, hroty ze stropu v malé sopky, pod mapu dá
+  lávovou řeku a celý obraz rozvlní horkým vzduchem. Témata jsou **jen vzhled**
+  – nesahají na fyziku ani na hitboxy. Drží je `LEVEL_THEMES` v generátoru.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen

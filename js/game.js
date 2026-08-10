@@ -15,6 +15,11 @@ const MIN_VIEW_TILES = 18;
 // Šířka rohu vpravo nahoře, kterým se ťuknutím přepíná zvuk (px)
 const MUTE_ZONE = 44;
 
+const TAU = Math.PI * 2;
+
+// Kolik vloček sněhu / jisker nad lávou má prostředí v pozadí
+const WEATHER_COUNT = 90;
+
 export class Game {
     constructor(canvas, levels, controls) {
         this.c = canvas;
@@ -215,6 +220,14 @@ export class Game {
         const rows = this.level.height - this.level.viewTop;
         this.tile = Math.max(1, Math.min(availH / rows, this.c.width / MIN_VIEW_TILES));
         this.offsetY = HUD + (availH - this.tile * rows) / 2 - this.level.viewTop * this.tile;
+
+        // Ohnivé téma kreslí svět stranou, aby se dal rozvlnit horkým vzduchem
+        if (this.level.theme === 'fire') {
+            this.haze ??= document.createElement('canvas');
+            this.haze.width = this.c.width;
+            this.haze.height = this.c.height;
+            this.hazeCtx = this.haze.getContext('2d');
+        }
     }
 
     loop(now) {
@@ -446,15 +459,36 @@ export class Game {
     }
 
     // Barevný odstín se s každým levelem posouvá – každý level vypadá jinak.
-    // Level s tématem si odstín určuje sám (ledový je studeně modrý).
+    // Level s tématem si odstín určuje sám (ledový studeně modrý, ohnivý rudý).
     get hue() {
         if (this.level.theme === 'ice') return 194;
+        if (this.level.theme === 'fire') return 14;
         return (205 + this.levelIndex * 31) % 360;
     }
 
     render() {
+        // V ohnivém tématu se svět nakreslí stranou a na plátno se přenese
+        // rozvlněný horkým vzduchem. HUD a překryv se nevlní, ať jdou číst.
+        const hazed = this.level.theme === 'fire' && this.hazeCtx;
+        const main = this.ctx;
+
+        if (hazed) this.ctx = this.hazeCtx;
+        this.drawWorld();
+        if (hazed) {
+            this.ctx = main;
+            this.drawHeatHaze();
+        }
+
+        this.drawHud();
+        this.drawOverlay();
+    }
+
+    // Všechno, co patří do herního světa (a co se v ohnivém tématu vlní)
+    drawWorld() {
         this.drawBackground();
         this.drawLevel();
+        // Láva teče spodním řádkem mapy, takže se kreslí až přes bloky
+        if (this.level.theme === 'fire') this.drawLava();
         this.saws.forEach(s => s.draw(this.ctx, this.px(s.x), this.py(s.y), this.tile));
         this.orbiters.forEach(o => o.draw(this.ctx, this.px(o.x), this.py(o.y), this.tile));
 
@@ -463,9 +497,28 @@ export class Game {
         }
 
         this.drawParticles();
-        this.drawGroundLine();
-        this.drawHud();
-        this.drawOverlay();
+        // V ohnivém tématu je pod mapou láva, tmavý pruh by ji jen přikryl
+        if (this.level.theme !== 'fire') this.drawGroundLine();
+    }
+
+    /**
+     * Přenese hotový obraz světa po vodorovných pruzích, každý posunutý podle
+     * sinusovky – vypadá to jako chvění vzduchu nad ohněm. Dole u lávy se vlní
+     * víc než nahoře. Pruh se kreslí o kus širší, aby na krajích nevznikly mezery.
+     */
+    drawHeatHaze() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+        const band = Math.max(4, Math.round(h / 110));
+        const amp = Math.max(1.5, this.tile * 0.045);
+        const pad = amp * 2;
+
+        for (let y = 0; y < h; y += band) {
+            const src = Math.min(band, h - y);
+            const dx = Math.sin(this.clock * 2.4 + y * 0.05) * amp * (0.35 + y / h);
+            ctx.drawImage(this.haze, 0, y, w, src, dx - pad, y, w + pad * 2, src);
+        }
     }
 
     drawBackground() {
@@ -493,6 +546,97 @@ export class Game {
             ctx.lineTo(this.c.width, Math.round(y) + 0.5);
         }
         ctx.stroke();
+
+        if (this.level.theme === 'ice') this.drawWeather(false);
+        if (this.level.theme === 'fire') this.drawWeather(true);
+    }
+
+    /**
+     * Sníh (ledové téma), nebo jiskry stoupající od lávy (ohnivé téma).
+     * Polohy se počítají z hodin a stálého šumu podle pořadí vločky, takže
+     * není potřeba držet stav – přežije to i změnu velikosti okna.
+     */
+    drawWeather(rising) {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+
+        for (let i = 0; i < WEATHER_COUNT; i++) {
+            // Bližší vločky jsou větší, rychlejší a víc se posouvají s kamerou
+            const depth = 0.35 + noise(i) * 0.65;
+            const speed = (rising ? 55 : 26) * depth;
+            const travel = (noise(i + 101) * h + this.clock * speed) % h;
+            const y = rising ? h - travel : travel;
+            const drift = Math.sin(this.clock * (rising ? 1.6 : 0.7) + i) * 14 * depth;
+            const x = wrap(noise(i + 7) * w + drift - this.camX * this.tile * 0.12 * depth, w);
+            const r = depth * Math.max(1.2, this.tile * (rising ? 0.028 : 0.038));
+
+            // Jiskra ke konci cesty vyhasíná, vločka je pořád stejná
+            const fade = rising ? Math.max(0, 1 - travel / h) : 1;
+            ctx.globalAlpha = (0.25 + depth * 0.5) * fade;
+            ctx.fillStyle = rising
+                ? `hsl(${25 + noise(i + 55) * 20}, 100%, ${60 + depth * 20}%)`
+                : '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, TAU);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+    }
+
+    /**
+     * Lávová řeka pod úrovní země. Hladina se vlní a posouvá, přes propasti
+     * v podlaze je vidět dolů do ní.
+     */
+    drawLava() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+        const top = this.py(this.level.height - 1);
+        if (top > h) return;
+
+        const amp = Math.max(2, this.tile * 0.07);
+        const scroll = this.clock * 42 + this.camX * this.tile * 0.3;
+        const surface = [];
+        for (let x = 0; x <= w + 8; x += 8) {
+            surface.push([x, top + Math.sin((x + scroll) * 0.02) * amp
+                + Math.sin((x - scroll * 1.7) * 0.007) * amp * 0.6]);
+        }
+
+        ctx.beginPath();
+        surface.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        ctx.lineTo(w, h);
+        ctx.lineTo(0, h);
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(0, top - amp, 0, h);
+        grad.addColorStop(0, '#ffd166');
+        grad.addColorStop(0.15, '#ff7b17');
+        grad.addColorStop(0.55, '#c22b0d');
+        grad.addColorStop(1, '#3d0a05');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Rozžhavená krusta na hladině
+        ctx.beginPath();
+        surface.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        ctx.strokeStyle = 'rgba(255, 232, 160, 0.85)';
+        ctx.lineWidth = Math.max(this.tile * 0.05, 2);
+        ctx.stroke();
+
+        // Bubliny těsně pod hladinou
+        for (let i = 0; i < 10; i++) {
+            const life = (this.clock * 0.5 + noise(i + 313)) % 1;
+            const x = wrap(noise(i + 17) * w - this.camX * this.tile * 0.3, w);
+            const r = Math.max(1.5, this.tile * 0.06) * (0.4 + life * 0.8);
+            ctx.globalAlpha = 0.5 * (1 - life);
+            ctx.fillStyle = '#ffe08a';
+            ctx.beginPath();
+            ctx.arc(x, top + this.tile * (0.25 + noise(i + 91) * 0.5), r, 0, TAU);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
     }
 
     drawLevel() {
@@ -501,14 +645,13 @@ export class Game {
 
         for (let y = this.level.viewTop; y < this.level.height; y++) {
             for (let x = from; x < to; x++) {
-                if (this.level.isSolid(x, y)) this.drawBlock(x, y);
+                if (this.level.isSolid(x, y)) {
+                    if (this.level.theme === 'ice') this.drawIceBlock(x, y);
+                    else this.drawBlock(x, y);
+                }
 
                 const hazard = this.level.hazardAt(x, y);
-                if (hazard) {
-                    const up = hazard === 'spikeUp';
-                    if (this.level.theme === 'ice') this.drawIcicle(x, y, up);
-                    else this.drawSpike(x, y, up);
-                }
+                if (hazard) this.drawHazard(x, y, hazard === 'spikeUp');
 
                 const trigger = this.level.triggerAt(x, y);
                 if (trigger === 'pad') this.drawPad(x, y);
@@ -539,6 +682,67 @@ export class Game {
         if (!this.level.isSolid(x, y - 1)) {
             ctx.fillStyle = `hsl(${this.hue}, 90%, 78%)`;
             ctx.fillRect(px, py, t + 1, Math.max(t * 0.1, 2));
+        }
+    }
+
+    /**
+     * Namrzlý blok. Kresba je stálá funkce souřadnic políčka (šum podle x, y),
+     * takže námraza při posunu kamery neposkakuje.
+     */
+    drawIceBlock(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+
+        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        grad.addColorStop(0, 'hsl(198, 50%, 29%)');
+        grad.addColorStop(1, 'hsl(207, 55%, 14%)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(px, py, t + 1, t + 1);
+
+        // Šmouhy námrazy
+        ctx.strokeStyle = 'rgba(214, 245, 255, 0.32)';
+        ctx.lineWidth = Math.max(t * 0.05, 1);
+        ctx.beginPath();
+        for (let i = 0; i < 3; i++) {
+            const nx = noise(x * 17 + y * 5 + i * 41);
+            const ny = noise(x * 3 + y * 29 + i * 13);
+            const sx = px + t * (0.14 + nx * 0.6);
+            const sy = py + t * (0.16 + ny * 0.6);
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + t * 0.22, sy + t * 0.16);
+        }
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(190, 235, 255, 0.85)';
+        ctx.lineWidth = Math.max(t * 0.07, 1.5);
+        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+
+        // Na volné horní hraně leží sníh – zároveň je líp vidět, kam se doskočí
+        if (!this.level.isSolid(x, y - 1)) {
+            ctx.fillStyle = '#eaf9ff';
+            ctx.fillRect(px, py, t + 1, Math.max(t * 0.12, 2));
+            ctx.beginPath();
+            for (let i = 0; i < 3; i++) {
+                const cx = px + t * (0.2 + i * 0.3);
+                const r = t * (0.11 + noise(x * 7 + y + i * 23) * 0.07);
+                ctx.moveTo(cx - r, py + t * 0.05);
+                ctx.arc(cx, py + t * 0.05, r, Math.PI, 0);
+            }
+            ctx.fill();
+        }
+    }
+
+    // Hrot podle tématu: ledový krápník, plamen/sopka v ohnivém, jinak klasický
+    drawHazard(x, y, up) {
+        if (this.level.theme === 'ice') {
+            this.drawIcicle(x, y, up);
+        } else if (this.level.theme === 'fire') {
+            if (up) this.drawFlame(x, y);
+            else this.drawVolcano(x, y);
+        } else {
+            this.drawSpike(x, y, up);
         }
     }
 
@@ -610,6 +814,118 @@ export class Game {
         ctx.moveTo(px + t * 0.38, base + (tip - base) * 0.15);
         ctx.lineTo(px + t * 0.5, tip);
         ctx.stroke();
+    }
+
+    /**
+     * Plamen – ohnivá obdoba hrotu ze země. Kmitá a protahuje se v čase, každý
+     * po svém (fáze podle políčka). Šířkou i výškou zůstává v mezích políčka,
+     * aby kresba odpovídala tomu, co je opravdu smrtící.
+     */
+    drawFlame(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const cx = this.px(x + 0.5);
+        const base = this.py(y + 1);
+        const phase = noise(x * 7 + y * 13) * TAU;
+        const sway = Math.sin(this.clock * 5 + phase) * t * 0.12;
+        const stretch = 0.88 + 0.12 * Math.sin(this.clock * 8.5 + phase * 1.7);
+
+        // Záře pod plamenem
+        const glow = ctx.createRadialGradient(cx, base - t * 0.35, 0, cx, base - t * 0.35, t * 0.8);
+        glow.addColorStop(0, 'rgba(255, 140, 40, 0.35)');
+        glow.addColorStop(1, 'rgba(255, 110, 0, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(cx - t * 0.8, base - t * 1.15, t * 1.6, t * 1.6);
+
+        flamePath(ctx, cx, base, t * 0.42, t * 0.94 * stretch, sway);
+        const outer = ctx.createLinearGradient(0, base, 0, base - t);
+        outer.addColorStop(0, '#ffb703');
+        outer.addColorStop(0.45, '#ff6b1a');
+        outer.addColorStop(1, '#d61f00');
+        ctx.fillStyle = outer;
+        ctx.fill();
+
+        // Jádro plamene kmitá rychleji než obal
+        const coreSway = sway * 1.4 + Math.sin(this.clock * 11 + phase) * t * 0.05;
+        flamePath(ctx, cx, base, t * 0.2, t * 0.55 * stretch, coreSway);
+        const core = ctx.createLinearGradient(0, base, 0, base - t * 0.55);
+        core.addColorStop(0, '#fffbe6');
+        core.addColorStop(1, 'rgba(255, 214, 102, 0.85)');
+        ctx.fillStyle = core;
+        ctx.fill();
+    }
+
+    /**
+     * Malá sopka – ohnivá obdoba hrotu ze stropu. Visí kuželem dolů,
+     * z ústí žhne láva a odkapává.
+     */
+    drawVolcano(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+        const cx = px + t * 0.5;
+        const crater = py + t * 0.8;             // ústí míří dolů, k zemi
+        const phase = noise(x * 11 + y * 23) * TAU;
+        const pulse = 0.65 + 0.35 * Math.sin(this.clock * 4 + phase);
+
+        // Záře z ústí – kužel je tmavý, jinak by v tmavém pozadí zanikl
+        const glow = ctx.createRadialGradient(cx, crater, 0, cx, crater, t * (0.55 + 0.1 * pulse));
+        glow.addColorStop(0, 'rgba(255, 140, 30, 0.45)');
+        glow.addColorStop(1, 'rgba(255, 110, 0, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(px - t * 0.5, crater - t * 0.7, t * 2, t * 1.4);
+
+        ctx.beginPath();
+        ctx.moveTo(px + t * 0.04, py);
+        ctx.lineTo(px + t * 0.3, crater);
+        ctx.lineTo(px + t * 0.7, crater);
+        ctx.lineTo(px + t * 0.96, py);
+        ctx.closePath();
+
+        const rock = ctx.createLinearGradient(0, py, 0, crater);
+        rock.addColorStop(0, '#5a3b31');
+        rock.addColorStop(0.65, '#3a221e');
+        rock.addColorStop(1, '#241211');
+        ctx.fillStyle = rock;
+        ctx.fill();
+        ctx.strokeStyle = '#160a0a';
+        ctx.lineWidth = Math.max(t * 0.05, 1);
+        ctx.stroke();
+
+        // Praskliny v čedičovém kuželi prosvítají žhavě
+        ctx.strokeStyle = `rgba(255, 120, 30, ${0.35 + pulse * 0.3})`;
+        ctx.lineWidth = Math.max(t * 0.04, 1);
+        ctx.beginPath();
+        ctx.moveTo(px + t * 0.3, py + t * 0.12);
+        ctx.lineTo(px + t * 0.42, py + t * 0.5);
+        ctx.moveTo(px + t * 0.72, py + t * 0.2);
+        ctx.lineTo(px + t * 0.6, crater - t * 0.1);
+        ctx.stroke();
+
+        // Rozžhavené ústí – vnější lem a jasné jádro
+        ctx.fillStyle = `rgba(255, ${Math.round(110 + 80 * pulse)}, 30, ${0.75 + 0.25 * pulse})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, crater, t * 0.23, t * 0.08 + t * 0.02 * pulse, 0, 0, TAU);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(255, 240, 190, ${0.65 + 0.35 * pulse})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, crater, t * 0.11, t * 0.04, 0, 0, TAU);
+        ctx.fill();
+
+        // Kapky lávy stékající z ústí (jen kousek, ať se nepletou s překážkou)
+        for (let i = 0; i < 2; i++) {
+            const drop = (this.clock * 0.8 + noise(x * 5 + y * 31 + i * 17)) % 1;
+            const dx = cx + (i ? 1 : -1) * t * 0.09;
+            const dy = crater + drop * t * 0.22;
+            ctx.globalAlpha = 1 - drop;
+            ctx.fillStyle = '#ff8c1a';
+            ctx.beginPath();
+            ctx.ellipse(dx, dy, t * 0.035, t * 0.06, 0, 0, TAU);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
     }
 
     drawPad(x, y) {
@@ -803,6 +1119,39 @@ export class Game {
         ctx.font = `${Math.min(Math.max(this.tile * 0.6, 14), this.c.width / 34)}px "Courier New", monospace`;
         ctx.fillText(subtitle, this.c.width / 2, this.c.height / 2 + Math.max(this.tile * 1.2, 28));
     }
+}
+
+// Stálé „náhodné“ číslo 0–1 pro dané zadání – aby se kresba mezi snímky
+// neměnila, ale přitom nebyla pravidelná (námraza, fáze plamenů, vločky)
+function noise(seed) {
+    const v = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+    return v - Math.floor(v);
+}
+
+// Zbytek po dělení, který pro záporná čísla vrací kladnou hodnotu
+function wrap(value, size) {
+    return ((value % size) + size) % size;
+}
+
+/**
+ * Cesta plamene: od základny se rozšíří do břicha a sbíhá se do špičky
+ * posunuté o `sway` (bez vykreslení – volající si zvolí výplň).
+ */
+function flamePath(ctx, cx, base, halfWidth, height, sway) {
+    const tip = base - height;
+    ctx.beginPath();
+    ctx.moveTo(cx - halfWidth, base);
+    ctx.bezierCurveTo(
+        cx - halfWidth * 1.15, base - height * 0.45,
+        cx + sway - halfWidth * 0.6, base - height * 0.7,
+        cx + sway, tip
+    );
+    ctx.bezierCurveTo(
+        cx + sway + halfWidth * 0.6, base - height * 0.7,
+        cx + halfWidth * 1.15, base - height * 0.45,
+        cx + halfWidth, base
+    );
+    ctx.closePath();
 }
 
 // Cesta zaobleného obdélníku (bez vykreslení – volající si zvolí fill/stroke)
