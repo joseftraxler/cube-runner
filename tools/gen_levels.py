@@ -1212,7 +1212,9 @@ export {{level{n}}};
 
 # Vizuální témata úrovní (viz Level v js/level.js). Bez záznamu = běžný vzhled.
 LEVEL_THEMES = {
-    5: 'ice',       # ledová jeskyně – hroty se kreslí jako modré krápníky
+    5: 'ice',       # ledová jeskyně – krápníky, namrzlé bloky, padající sníh
+    8: 'fire',      # sopečná sloj – plameny, sopky, láva a chvění horkého vzduchu
+    10: 'fire',
 }
 
 
