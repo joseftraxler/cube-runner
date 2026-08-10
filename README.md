@@ -6,14 +6,15 @@ která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
 10 úrovní, každou s vlastním tématem – propasti, plošiny, pily, ledová jeskyně,
 odrazové plošiny, skokové prstence, obrácená gravitace – a s rostoucí rychlostí
-i hustotou překážek. Poslední úroveň běží o polovinu rychleji než první a je
-skoro dvakrát delší.
+i hustotou překážek. Každá stojí na vlastní sadě překážek, takže se kola
+neopakují. Poslední úroveň běží o polovinu rychleji než první a je skoro
+dvaapůlkrát delší.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory.
 
 **▶️ Zahrát online: <https://joseftraxler.github.io/cube-runner/>**
 
-![Náhled hry Cube Runner – 6. úroveň, kostka přeskakuje odrazovou plošinu pod visícími hroty](docs/preview.png)
+![Náhled hry Cube Runner – 2. úroveň, kostka skáče po ostrůvcích mostu nad propastí](docs/preview.png)
 
 ## Ovládání
 
@@ -46,7 +47,7 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 | Koule na řetězu      | Obíhá kolem kotvy, takže je smrtící jinde v jinou chvíli – podle toho, kde zrovna je, se pod ní proběhne, nebo se přeskočí. |
 | Odrazová plošina     | Při dotyku vymrští kostku o dost výš než běžný skok (i bez stisku).   |
 | Skokový prstenec     | Ve vzduchu z něj jde na stisk skočit znovu. Jednou za pokus.          |
-| Gravitační portál    | Otočí gravitaci – kostka spadne na strop a běží po něm hlavou dolů.   |
+| Gravitační portál    | Otočí gravitaci – kostka spadne na strop a běží po něm hlavou dolů. Nízký portál jde přeskočit a zůstat dole, vysoký ne. |
 | Mince                | Bonusové body, sbírání je nepovinné.                                  |
 | Rozcestí             | Dvě cesty vedle sebe: dole se jen skáče, nahoře jsou mince navíc.     |
 | Past                 | Odrazová plošina pod visícími hroty – kdo na ni šlápne, je vymrštěn do nich. Musí se přeskočit. |
@@ -68,8 +69,8 @@ rozladěných pil, kterému se s úderem otevře a hned zase přivře filtr. Je 
 jediné místo, kde ve skladbě zazní celá harmonie naráz (basa drží jen základní
 tón, melodie je jednohlas), takže střední pásmo dostane tělo. Padají každý druhý
 takt jako interpunkce, v nejvyšším stupni se přidá ještě synkopovaná odpověď.
-Po nadpoloviční části se přidá arpeggio a filtr se otevře naplno. Každý přechod podtrhne činel
-s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
+Po nadpoloviční části se přidá arpeggio a filtr se otevře naplno. Každý přechod
+podtrhne činel s nájezdem. Po smrti se intenzita vrátí na začátek – hudba tak přímo odráží,
 jak se ti daří.
 
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).

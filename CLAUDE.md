@@ -97,11 +97,16 @@ prázdno; hra pak kreslí jen využitou část mapy (kvůli přiblížení obraz
 
 Mapy staví generátor `tools/gen_levels.py` (`python3 tools/gen_levels.py`) – skládá
 je z pojmenovaných úseků (`PATTERNS`) podle `LEVEL_PLAN` a přepíše `js/levels/*.js`.
-Každá úroveň má v plánu **vlastní téma** (propasti, plošiny, pily, stropy,
-odrazové plošiny, prstence, gravitace), ať se levely navzájem nepodobají.
-Gravitační portál jde přeskočit, takže úsek `gravity` má překážky **na stropě
-i na podlaze** – obě cesty musí být průchozí (ověřuj obojí zvlášť tak, že tu
-druhou zataraseš).
+Každá úroveň stojí v plánu na **vlastní sadě úseků**, které se jinde skoro
+neobjeví (propasti, terén, pohyblivé překážky, stropy, odrazové plošiny,
+prstence, gravitace). Jen jiné pořadí stejných úseků nestačí – kola pak působí
+stejně. Obecné hroty (`spike*`) slouží jako spojovací materiál, ne jako náplň.
+Gravitační portál jde přeskočit, pokud je nízký – úsek `gravity` proto má
+překážky **na stropě i na podlaze** a obě cesty musí být průchozí (ověřuj obojí
+zvlášť tak, že tu druhou zataraseš). Naproti tomu `gravitylock` má portál tři
+políčka vysoký, takže ho přeskočit nejde (skok zvládne 2,5 políčka), a výstupní
+portál leží o řádek pod dráhou po stropě – musí se do něj záměrně klesnout,
+jinak kostka na konci stropu vyletí z mapy.
 Hustotu řídí šířka oddechu mezi úseky: `flat` (8 políček) na klid, `flat4` (4) tam,
 kde mají překážky navazovat. Úseky samotné mají okraje co nejužší – prázdno
 uvnitř úseku se sčítá s oddechem a level pak působí prázdně.

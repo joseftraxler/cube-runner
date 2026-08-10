@@ -67,8 +67,8 @@ function seekInPage([levelIndex, jumps, dt, stopX]) {
     return {x: +x.toFixed(2), state: game.state};
 }
 
-const level = Number(arg('level', 6));
-const stopX = Number(arg('x', 100));
+const level = Number(arg('level', 2));
+const stopX = Number(arg('x', 138));
 const out = resolve(ROOT, arg('out', 'docs/preview.png'));
 
 const paths = JSON.parse(execFileSync('python3', [join(ROOT, 'tools/gen_levels.py'), '--paths', '-'],
