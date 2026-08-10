@@ -10,7 +10,8 @@ obrácená gravitace – a s rostoucí rychlostí i hustotou překážek. Každ�
 vlastní sadě překážek, takže se kola neopakují. Poslední úroveň běží o polovinu
 rychleji než první a je skoro dvaapůlkrát delší.
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
-nepotřebuje žádné zvukové soubory.
+nepotřebuje žádné zvukové soubory. Na telefonu k nim přibude haptická odezva –
+každá událost vibruje po svém.
 
 **▶️ Zahrát online: <https://joseftraxler.github.io/cube-runner/>**
 
@@ -24,6 +25,7 @@ nepotřebuje žádné zvukové soubory.
 | Pauza                         | `P` nebo `Esc`                   | ťuknutí do horního pruhu  |
 | Restart úrovně                | `R`                              | –                         |
 | Zvuk zapnout / vypnout        | `M`                              | ťuknutí na ikonu vpravo nahoře |
+| Vibrace zapnout / vypnout     | `H`                              | ťuknutí na ikonu vedle zvuku |
 | Start / pokračování           | `mezerník`                       | ťuknutí                   |
 
 Tlačítko skoku se dá **držet** – kostka pak vyskočí znovu hned, jak dopadne.
@@ -85,6 +87,17 @@ intenzita vrátí na začátek – hudba tak přímo odráží, jak se ti daří
 Zvuk naběhne až po prvním stisku (prohlížeče dřív přehrávání nepovolí).
 Ztlumení klávesou `M` se pamatuje do příště.
 
+## Vibrace
+
+Na telefonu hra kromě zvuku i **vibruje** – každá událost má vlastní vzor, takže
+je poznat po hmatu: skok je sotva znatelné ťuknutí, prstenec dvojité, odrazová
+plošina delší kopnutí, smrt otřes a doběhnutý level krátká fanfára. Hodí se to
+přesně tam, kde se hraje se ztlumeným zvukem.
+
+Vypnout se dají klávesou `H` nebo ťuknutím na ikonu 📳 vedle přepínače zvuku
+(nastavení se pamatuje do příště). Na zařízeních, která vibrace neumí, se ikona
+vůbec nezobrazuje.
+
 ## Spuštění
 
 Hra používá ES moduly, které prohlížeč **nenačte přes `file://`** – je potřeba
@@ -122,6 +135,7 @@ js/
 ├── game.js             Game – herní smyčka, stavy, kolize s překážkami, vykreslování
 ├── level.js            Level – parsování mapy a rychlosti
 ├── audio.js            Sound – syntéza zvukových efektů a hudby (Web Audio)
+├── haptics.js          Haptics – vibrace telefonu k jednotlivým událostem
 ├── physics.js          fyzikální konstanty (gravitace, skok, velikost kostky)
 ├── input.js            mapování kláves na akce
 ├── entities/
