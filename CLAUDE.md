@@ -20,10 +20,14 @@ levelů se má pustit**:
 
 ```bash
 python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely doběhnout
-node tools/playtest.mjs               # projde všech 10 levelů v Chromiu (potřebuje playwright)
+node tools/playtest.mjs               # projde všech 10 levelů v Chromiu
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
 ```
+
+Nástroje v Node.js potřebují Chromium přes `playwright` (`npm i -D playwright`) –
+proto nejsou součástí hry, jen vývoje. `node tools/playtest.mjs --headed` ukáže,
+co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balíčků.
 
 ## Architektura a klíčový princip
 
@@ -36,14 +40,21 @@ node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzát
   Do světa jen *nahlížejí* kvůli vlastnímu pohybu (`this.game.level` kvůli
   blokům). `Player` si řeší svoji fyziku a náraz do zdi jen ohlásí příznakem
   `crashed` – že to znamená smrt, rozhoduje `Game`.
-- `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/`Orbiter` ji
-  implementují a **nesahají na `this.game`** – dostanou kontext i pozici
-  parametrem. Tuhle nezávislost `draw` na hře zachovej.
+- `Entity` (`js/entities/entity.js`) drží startovní pozici, `reset()` a čas
+  `animPhase`. `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/
+  `Orbiter` ji implementují a **nesahají na `this.game`** – dostanou kontext
+  i pozici parametrem. Tuhle nezávislost `draw` na hře zachovej.
 - **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Ohnivé téma si
   `drawWorld` nechá vykreslit na pomocné plátno a přenese ho po pruzích
   rozvlněné horkým vzduchem (`drawHeatHaze`) – texty se tím vlnit nesmí.
   Ozdoby závislé na místě (námraza, fáze plamenů) počítej z `noise(x, y)`,
   ne z `Math.random()`, jinak budou při posunu kamery poskakovat.
+- **Prvky mapy vyhodnocuje `Game`, ne `Player`.** Odrazovou plošinu a gravitační
+  portál řeší `Game.applyTriggers` (volá `player.jump(PAD_BOOST)`, přepíná
+  `player.gravity`), prstenec `Game.tryJump`. Kostka o nich nic neví.
+- Stav pokusu žije v `Game`: využité prstence (`usedRings`), sebrané mince,
+  postup (`progress`/`best`). `loadLevel` level znovu rozparsuje, takže se po
+  smrti mince i prstence obnoví.
 - **Pohyblivé překážky se hýbou jen ve stavu `playing`** (`Game.update` je krokuje
   až za kontrolou stavu). Jejich `animPhase` je tím pádem přesně odehraný čas
   a poloha je čistá funkce místa v levelu – bez toho by je generátor nemohl
@@ -53,12 +64,16 @@ Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
 `input.js` (mapování kláves na akce), `audio.js` (zvuk), `scripts.js` (bootstrap –
 canvas, seznam levelů, ovládání, spuštění).
 
+Instance hry visí na `window.cubeRunner` – sahá po ní ladění v konzoli i nástroje
+(`playtest.mjs`, `screenshot.mjs`, `audiotest.mjs`), takže ji tam nech.
+
 ## Ovládání
 
 Klávesy, dotyk i myš vedou do jedné metody `Game.handleAction(action)` (action =
 `jump`/`pause`/`restart`/`mute`), puštění tlačítka do `Game.handleRelease(action)`.
-Klávesnice mapuje přes `input.js`, dotyk a myš řeší `Game.bindPointer`. Nové vstupy
-směruj taky tam, ať se logika neduplikuje.
+Klávesnice mapuje přes `input.js`, dotyk a myš řeší `Game.bindPointer` (horní pruh
+= pauza, jeho pravý roh = zvuk, zbytek plochy = skok). Nové vstupy směruj taky tam,
+ať se logika neduplikuje.
 
 Držené tlačítko skoku (`holdJump`) skáče znovu hned po dopadu – řeší to `Game.update`,
 ne `Player`.
@@ -74,8 +89,9 @@ Souřadnice entit jsou **střed** objektu v jednotkách políček.
 - Krok se dělí na podkroky max. `MAX_SUBSTEP` políčka, aby kostka neproletěla blokem.
 - Gravitaci lze otočit (`Player.gravity` = ±1). Při obrácené gravitaci kostka
   „stojí“ na stropě a skok ji posílá dolů.
-- Hroty a pily mají menší hitbox (`HIT`) než kolize s bloky (`CUBE`) – aby hra
-  odpouštěla těsné průlety.
+- Hroty, pily i koule mají menší hitbox (`HIT`) než kolize s bloky (`CUBE`) – aby
+  hra odpouštěla těsné průlety. Kulaté překážky se měří vzdáleností od hitboxu
+  (`Game.hitsCircle`), hroty zmenšeným obdélníkem.
 
 Konstanty jsou v `js/physics.js` a plyne z nich tvar skoku (výška 2,5 políčka,
 délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeověř úrovně** –
@@ -121,6 +137,10 @@ uvnitř úseku se sčítá s oddechem a level pak působí prázdně.
 Standardní cesta k úpravě levelu je **změnit úsek nebo plán** a generátor pustit
 znovu (je idempotentní).
 
+Všechny úseky mají pevnou geometrii: přesně `HEIGHT` (14) řádků, podlaha od řádku
+`GROUND_ROW` (12), v zápisu se místo mezery píše `.` (funkce `pattern` to převede).
+Vizuální téma se levelu přiřadí v `LEVEL_THEMES` podle jeho čísla.
+
 Ručně upravenou mapu ale generátor **nepřepíše**: v hlavičce každého souboru je
 otisk mapy a když nesedí na obsah, soubor se přeskočí (`--force` to vynutí).
 Takový level pak neodpovídá plánu – ověřuj ho přes
@@ -132,18 +152,20 @@ třech snímkových frekvencích a navíc s hrubým rastrem stisků (30 Hz) jako
 hratelnosti. Když level neprojde, skript skončí chybou a nic nezapíše.
 
 `tools/playtest.mjs` totéž ověří proti opravdovému kódu hry: nechá si od generátoru
-spočítat čísla snímků, ve kterých se má skočit, a odehraje všech 10 levelů v Chromiu.
-Čísla snímků se počítají **z hotových souborů v `js/levels/`**, ne z plánu, takže
-playtest sedí i na ručně upravené mapy.
+spočítat čísla snímků, ve kterých se má skočit (`--paths`), a odehraje všech 10 levelů
+v Chromiu. Čísla snímků se počítají **z hotových souborů v `js/levels/`**, ne z plánu,
+takže playtest sedí i na ručně upravené mapy. Ze stejného zdroje si bere skoky
+i `tools/screenshot.mjs`, když přetáčí level na místo pro náhled.
 Je to zároveň test, že si JS a simulace v Pythonu odpovídají snímek po snímku –
 když se rozejdou, playtest spadne.
 
 ### Přidání levelu
 
-1. Přidej úsek do `PATTERNS` a plán do `LEVEL_PLAN` v `tools/gen_levels.py`.
+1. Přidej úsek do `PATTERNS` a plán do `LEVEL_PLAN` v `tools/gen_levels.py`
+   (případně téma do `LEVEL_THEMES`).
 2. Spusť generátor – vznikne `js/levels/levelX.js`.
 3. Naimportuj a přidej do pole `levels` v `js/scripts.js`. Pořadí = pořadí ve hře.
-4. Přidej soubor do `ASSETS` v `sw.js`.
+4. Přidej soubor do `ASSETS` v `sw.js` a zvyš verzi `CACHE`.
 
 ## Zvuk
 
@@ -163,6 +185,10 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů i otevření filtru řídí `TIERS`/`TIER_CUTOFF`.
+- `setTrack(levelIndex, speedPct)` si z čísla levelu odvodí stupnici i harmonii
+  a melodii složí z generátoru náhodných čísel nasazeného na index levelu – každý
+  level tak zní jinak, ale pokaždé stejně. Tempo se počítá z rychlosti levelu,
+  takže rychlejší kolo hraje rychleji.
 - `Game.loop` každý snímek nastaví `setMusicOn(state === 'playing')`; stav hudby
   se tak neroztahuje po celém kódu. `setTrack` v `loadLevel` vrací skladbu na
   začátek, takže po smrti hraje znovu od začátku.
