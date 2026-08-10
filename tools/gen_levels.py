@@ -874,6 +874,43 @@ PATTERNS = {
 ######################
 ######################
 """),
+    # Supi nad stolovou horou (pouštní téma kreslí hroty ze stropu jako supy):
+    # nahoru se musí vyskočit, po hoře se běží pod nimi a skáče se jen nad roklí,
+    # kde žádný sup nevisí.
+    'vulturemesa': pattern("""
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+..........................
+........vv........vv......
+..........................
+....########...########...
+....########...########...
+##########################
+##########################
+"""),
+    # Supi nad rovinou: pod nimi se nesmí vyskočit, takže hrot i propast se
+    # musí přeskočit z místa mezi nimi.
+    'vulturegap': pattern("""
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+....vv...........vv.........
+............................
+.........^..................
+#####################....###
+#####################....###
+"""),
     # Povinná gravitace: vstupní portál je tři políčka vysoký (nejde přeskočit)
     # a výstupní je o řádek pod dráhou, takže se do něj musí záměrně klesnout –
     # kdo to nestihne, vyletí na konci stropu z mapy.
@@ -930,11 +967,11 @@ LEVEL_PLAN = [
            'flat4', 'coinarc', 'flat4', 'chain', 'flat4', 'bridge', 'flat4',
            'doublepit', 'flat4', 'spikepair', 'flat4', 'pit4', 'flat4',
            'coinrisk', 'flat4', 'chain', 'flat', 'finish']),
-    # 3 – terén: běh po zdech, ostrůvcích a vyvýšeninách
+    # 3 – poušť s terénem: běh po zdech, ostrůvcích a stolových horách se supy
     (112, ['start', 'flat', 'wallrun', 'flat4', 'spiketower', 'flat4',
-           'islands', 'flat4', 'highground', 'flat4', 'spike3', 'flat4',
+           'islands', 'flat4', 'highground', 'flat4', 'vulturemesa', 'flat4',
            'highroad', 'flat4', 'step2', 'flat4', 'stairs', 'flat4', 'fork',
-           'flat4', 'wallrun', 'flat4', 'plateau', 'flat', 'finish']),
+           'flat4', 'vulturemesa', 'flat4', 'plateau', 'flat', 'finish']),
     # 4 – všechno, co se hýbe: pily a koule na řetězu
     (118, ['start', 'flat', 'saw', 'flat4', 'sawair', 'flat4', 'orbit',
            'flat4', 'sawgap', 'flat4', 'spike2', 'flat4', 'sawrun', 'flat4',
@@ -945,11 +982,11 @@ LEVEL_PLAN = [
            'flat4', 'sandwich', 'flat4', 'corridor', 'flat4', 'ceilspikes',
            'flat4', 'spike3', 'flat4', 'hangers', 'flat4', 'tunnel', 'flat4',
            'coinrisk', 'flat', 'finish']),
-    # 6 – odrazové plošiny, pasti a stavby
+    # 6 – druhá poušť: odrazové plošiny, pasti, stavby a supi nad rovinou
     (130, ['start', 'flat', 'pad', 'flat4', 'spiketower', 'flat4', 'padtrap',
            'flat4', 'platform', 'flat4', 'spikestair', 'flat4', 'padwall',
-           'flat4', 'towers', 'flat4', 'spike2', 'flat4', 'fork', 'flat4',
-           'spikestair', 'flat', 'finish']),
+           'flat4', 'towers', 'flat4', 'vulturegap', 'flat4', 'fork', 'flat4',
+           'vulturegap', 'flat', 'finish']),
     # 7 – prstence a široké propasti
     (136, ['start', 'flat', 'ring', 'flat4', 'highground', 'flat4', 'highroad',
            'flat4', 'bridge', 'flat4', 'orbit2', 'flat4', 'coinarc', 'flat4',
@@ -1212,10 +1249,11 @@ export {{level{n}}};
 
 # Vizuální témata úrovní (viz Level v js/level.js). Bez záznamu = běžný vzhled.
 LEVEL_THEMES = {
+    # Pouštní levely mají v plánu vlastní úsek s hroty ze stropu (vulturemesa,
+    # vulturegap) – jinak by se supi ve hře skoro neobjevili.
     3: 'desert',    # poušť – kaktusy, supi, pískovec, duny a rozpálený vzduch
     5: 'ice',       # ledová jeskyně – krápníky, namrzlé bloky, padající sníh
-    6: 'desert',    # druhá poušť – má i hroty ze stropu (úsek padtrap), takže se
-                    # v ní kromě kaktusů objeví i supi
+    6: 'desert',
     8: 'fire',      # sopečná sloj – plameny, sopky, láva a chvění horkého vzduchu
     10: 'fire',
 }
