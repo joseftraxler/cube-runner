@@ -8,7 +8,10 @@
  * země v plameny, hroty ze stropu v malé sopky, pod mapu dá lávovou řeku
  * a celý obraz rozvlní horkým vzduchem; `'desert'` staví místo hrotů ze země
  * kaktusy, místo hrotů ze stropu poletující supy, bloky mění v pískovec a do
- * pozadí dá duny se sluncem v prachu (taky se vlní horkem).
+ * pozadí dá duny se sluncem v prachu (taky se vlní horkem); `'math'` promění
+ * hroty v operátory Δ a ∇, bloky v dlaždice rýsovacího papíru se symboly,
+ * minci v ražbu s π, prstenec v křivkový integrál a do pozadí dá rýsovací
+ * papír s geometrickými obrazci, mezi kterými jsou narýsované vztahy.
  * Téma je čistě vzhled, hra běží stejně.
  *
  * Mapa se čte zleva doprava, kostka běží sama a hráč jen skáče.

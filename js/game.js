@@ -22,6 +22,22 @@ const TAU = Math.PI * 2;
 // Kolik vloček sněhu / jisker nad lávou má prostředí v pozadí
 const WEATHER_COUNT = 90;
 
+// Kolik symbolů plave v hloubce matematického světa a kolik je v něm obrazců
+const MATH_SYMBOL_COUNT = 24;
+const MATH_FIGURES = 5;
+
+/*
+ * Matematické symboly se kreslí čarami (`mathGlyph`), ne písmem. Znaky jako
+ * ∑ nebo ∮ nemá každé zařízení ve fontu a místo symbolu by byl vidět prázdný
+ * obdélníček – navíc rýsované tahy sedí k rýsovacímu papíru v pozadí.
+ */
+const MATH_GLYPHS = ['sum', 'product', 'integral', 'contour', 'root', 'pi',
+    'infinity', 'nabla', 'delta', 'partial', 'lambda', 'phi'];
+
+// Do bloků se rýsují jen jednoduché symboly – složité by se v políčku slily
+const BLOCK_GLYPHS = ['pi', 'sum', 'integral', 'root', 'delta', 'infinity',
+    'partial', 'lambda'];
+
 export class Game {
     constructor(canvas, levels, controls) {
         this.c = canvas;
@@ -484,11 +500,13 @@ export class Game {
 
     // Barevný odstín se s každým levelem posouvá – každý level vypadá jinak.
     // Level s tématem si odstín určuje sám (ledový studeně modrý, ohnivý rudý,
-    // pouštní pískový).
+    // pouštní pískový). Matematické téma drží fialovou řadu, ale posouvá ji
+    // s levelem – jinak by pět matematických kol vypadalo úplně stejně.
     get hue() {
         if (this.level.theme === 'ice') return 194;
         if (this.level.theme === 'fire') return 14;
         if (this.level.theme === 'desert') return 32;
+        if (this.level.theme === 'math') return 258 + (this.levelIndex % 5) * 12;
         return (205 + this.levelIndex * 31) % 360;
     }
 
@@ -563,6 +581,12 @@ export class Game {
         // Poušť má místo mřížky vlastní obzor – duny, stolové hory a slunce
         if (this.level.theme === 'desert') {
             this.drawDesert();
+            return;
+        }
+
+        // Matematický svět má místo mřížky rýsovací papír s obrazci
+        if (this.level.theme === 'math') {
+            this.drawMathSpace();
             return;
         }
 
@@ -802,6 +826,284 @@ export class Game {
     }
 
     /**
+     * Matematický svět. Pozadí je rýsovací papír – jemná mřížka se zvýrazněnými
+     * osami – a nad ním se pomalu otáčejí geometrické obrazce, mezi kterými jsou
+     * narýsované vztahy (shodné strany, úhly, zobrazení, promítnutí kružnice do
+     * sinusovky). Úplně vzadu plují matematické symboly.
+     *
+     * Všechny vrstvy jsou stálou funkcí času a pořadí prvku (`noise`), takže se
+     * s posunem kamery nic nepřeskládá, a jedou s malým parallaxem – pozadí má
+     * být hloubka, ne rozptýlení. Proto je taky celé bledé: hráč musí i tak na
+     * první pohled poznat, kde je blok a kde překážka.
+     */
+    drawMathSpace() {
+        const ctx = this.ctx;
+        const h = this.hue;
+
+        const grad = ctx.createLinearGradient(0, 0, 0, this.c.height);
+        grad.addColorStop(0, `hsl(${h}, 45%, 13%)`);
+        grad.addColorStop(0.6, `hsl(${h + 12}, 50%, 9%)`);
+        grad.addColorStop(1, `hsl(${h + 20}, 55%, 5%)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, this.c.width, this.c.height);
+
+        this.drawGraphPaper();
+        this.drawMathSymbols();
+        this.drawMathFigures();
+    }
+
+    /**
+     * Rýsovací papír: jemný rastr, přes něj hrubší a v místě mapy vodorovná osa
+     * s ryskami. Svislá čára rastru se posouvá s kamerou, aby byl vidět pohyb.
+     */
+    drawGraphPaper() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+        const shade = this.hue;
+
+        for (const [size, alpha] of [[0.5, 0.05], [2, 0.11]]) {
+            const step = this.tile * size;
+            const shift = (this.camX * this.tile * 0.35) % step;
+            ctx.strokeStyle = `hsla(${shade}, 75%, 70%, ${alpha})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let x = -shift; x < w; x += step) {
+                ctx.moveTo(Math.round(x) + 0.5, 0);
+                ctx.lineTo(Math.round(x) + 0.5, h);
+            }
+            for (let y = ((this.offsetY % step) + step) % step; y < h; y += step) {
+                ctx.moveTo(0, Math.round(y) + 0.5);
+                ctx.lineTo(w, Math.round(y) + 0.5);
+            }
+            ctx.stroke();
+        }
+
+        // Vodorovná osa vede po úrovni země – rysky na ní odměřují políčka,
+        // takže je vidět, jak daleko kostka doběhla
+        const axis = Math.round(this.py(this.level.height - 2)) + 0.5;
+        ctx.strokeStyle = `hsla(${shade}, 85%, 78%, 0.28)`;
+        ctx.lineWidth = Math.max(this.tile * 0.03, 1);
+        ctx.beginPath();
+        ctx.moveTo(0, axis);
+        ctx.lineTo(w, axis);
+        const step = this.tile * 2;
+        const shift = (this.camX * this.tile * 0.35) % step;
+        for (let x = -shift; x < w; x += step) {
+            ctx.moveTo(Math.round(x) + 0.5, axis - this.tile * 0.12);
+            ctx.lineTo(Math.round(x) + 0.5, axis + this.tile * 0.12);
+        }
+        ctx.stroke();
+    }
+
+    /**
+     * Symboly plující v hloubce (∑, ∫, ∮, π …). Kreslí se čarami, ne písmem –
+     * na cizím zařízení by z nefontovaného znaku byl prázdný obdélníček.
+     */
+    drawMathSymbols() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        for (let i = 0; i < MATH_SYMBOL_COUNT; i++) {
+            // Bližší symboly jsou větší a víc se posouvají s kamerou
+            const depth = 0.3 + noise(i * 5 + 1) * 0.7;
+            // Symboly zůstávají menší než políčko: v pozadí mají být hloubka,
+            // ne kulisa, přes kterou se hledají překážky
+            const size = this.tile * (0.35 + depth * 0.55);
+            const x = wrap(noise(i * 13 + 7) * (w + size * 2)
+                - this.camX * this.tile * 0.09 * depth, w + size * 2) - size;
+            const y = noise(i * 23 + 3) * h
+                + Math.sin(this.clock * (0.2 + noise(i * 3) * 0.3) + i) * this.tile * 0.35;
+            const glyph = MATH_GLYPHS[Math.floor(noise(i * 31 + 11) * MATH_GLYPHS.length)];
+
+            ctx.strokeStyle = `hsla(${this.hue + 30}, 80%, 80%, ${0.05 + depth * 0.07})`;
+            ctx.lineWidth = Math.max(size * 0.06, 1);
+            mathGlyph(ctx, glyph, x, y, size);
+            ctx.stroke();
+        }
+
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+    }
+
+    /**
+     * Geometrické obrazce a vztahy mezi nimi. Každý obrazec je kružnice
+     * s vepsaným pravidelným mnohoúhelníkem, který se pomalu otáčí; k vrcholu
+     * vede poloměr s obloučkem úhlu a strany mají rysky shodnosti.
+     *
+     * Sousední obrazce spojuje čárkovaná šipka zobrazení – „vztah mezi nimi“.
+     * První obrazec je navíc jednotková kružnice, ze které se vodorovně promítá
+     * sinusovka: to je na pohled ta nejzřejmější matematická souvislost.
+     */
+    drawMathFigures() {
+        const ctx = this.ctx;
+        const w = this.c.width;
+        const h = this.c.height;
+        const span = w + this.tile * 20;
+        const shift = this.camX * this.tile * 0.16;
+
+        ctx.lineJoin = 'round';
+
+        const spot = i => ({
+            x: wrap(noise(i * 17 + 5) * span - shift, span) - this.tile * 10,
+            y: h * (0.12 + noise(i * 29 + 13) * 0.5),
+            r: this.tile * (1.2 + noise(i * 11 + 3) * 1.5),
+            turn: this.clock * (0.06 + noise(i * 7 + 1) * 0.12) + noise(i * 19) * TAU,
+        });
+
+        for (let i = 0; i < MATH_FIGURES; i++) {
+            const a = spot(i);
+            const b = spot(i + 1);
+            // Vztah se kreslí jen mezi obrazci, které jsou zrovna vedle sebe –
+            // přes celé plátno by z toho byla pavučina
+            if (Math.abs(b.x - a.x) < w * 0.45) this.drawRelation(a, b);
+        }
+
+        for (let i = 0; i < MATH_FIGURES; i++) {
+            const {x, y, r, turn} = spot(i);
+            if (x < -r * 3 || x > w + r * 3) continue;
+            if (i === 0) this.drawUnitCircle(x, y, r, turn);
+            else this.drawPolygonFigure(x, y, r, turn, 3 + Math.floor(noise(i * 37 + 9) * 4));
+        }
+
+        ctx.lineJoin = 'miter';
+    }
+
+    // Kružnice s vepsaným mnohoúhelníkem, poloměrem, úhlem a ryskami shodnosti
+    drawPolygonFigure(cx, cy, r, turn, sides) {
+        const ctx = this.ctx;
+        const ink = `hsla(${this.hue + 40}, 85%, 78%, 0.22)`;
+        const faint = `hsla(${this.hue + 40}, 85%, 78%, 0.12)`;
+
+        ctx.lineWidth = Math.max(r * 0.035, 1);
+        ctx.strokeStyle = faint;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, TAU);
+        ctx.stroke();
+
+        const point = k => [cx + Math.cos(turn + k * TAU / sides) * r,
+                            cy + Math.sin(turn + k * TAU / sides) * r];
+
+        ctx.strokeStyle = ink;
+        ctx.beginPath();
+        for (let k = 0; k <= sides; k++) {
+            const [px, py] = point(k);
+            if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+
+        // Poloměr k prvnímu vrcholu a oblouček úhlu u středu
+        const [vx, vy] = point(0);
+        ctx.strokeStyle = faint;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(vx, vy);
+        ctx.moveTo(cx + r * 0.3, cy);
+        ctx.arc(cx, cy, r * 0.3, 0, turn % TAU);
+        ctx.stroke();
+
+        // Rysky shodnosti stran – kolmá čárka uprostřed každé strany
+        ctx.strokeStyle = ink;
+        ctx.beginPath();
+        for (let k = 0; k < sides; k++) {
+            const [ax, ay] = point(k);
+            const [bx, by] = point(k + 1);
+            const mx = (ax + bx) / 2;
+            const my = (ay + by) / 2;
+            const dx = (bx - ax) / r;
+            const dy = (by - ay) / r;
+            ctx.moveTo(mx - dy * r * 0.09, my + dx * r * 0.09);
+            ctx.lineTo(mx + dy * r * 0.09, my - dx * r * 0.09);
+        }
+        ctx.stroke();
+    }
+
+    /**
+     * Jednotková kružnice s otáčejícím se průvodičem a sinusovkou, kterou
+     * z něj vodorovně promítá čárkovaná spojnice. Sinusovka roste doprava,
+     * takže je vidět, odkud se bere.
+     */
+    drawUnitCircle(cx, cy, r, turn) {
+        const ctx = this.ctx;
+        const ink = `hsla(${this.hue + 45}, 90%, 80%, 0.24)`;
+        const faint = `hsla(${this.hue + 45}, 90%, 80%, 0.12)`;
+        const px = cx + Math.cos(turn) * r;
+        const py = cy + Math.sin(turn) * r;
+
+        ctx.lineWidth = Math.max(r * 0.035, 1);
+        ctx.strokeStyle = ink;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, TAU);
+        ctx.stroke();
+
+        // Osy, průvodič a jeho průmět do svislé osy (sinus)
+        ctx.strokeStyle = faint;
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 1.25, cy);
+        ctx.lineTo(cx + r * 1.25, cy);
+        ctx.moveTo(cx, cy - r * 1.25);
+        ctx.lineTo(cx, cy + r * 1.25);
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+
+        ctx.setLineDash([r * 0.12, r * 0.1]);
+        ctx.strokeStyle = ink;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(cx + r * 1.35 + r * 3, py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Sinusovka napravo od kružnice – úhel průvodiče je její počátek
+        ctx.strokeStyle = ink;
+        ctx.beginPath();
+        for (let k = 0; k <= 48; k++) {
+            const t = k / 48;
+            const x = cx + r * 1.35 + t * r * 3;
+            const y = cy + Math.sin(turn + t * TAU) * r;
+            if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = `hsla(${this.hue + 45}, 95%, 85%, 0.3)`;
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(r * 0.06, 1.5), 0, TAU);
+        ctx.fill();
+    }
+
+    // Čárkovaná šipka mezi dvěma obrazci – „tenhle přejde na tamten“
+    drawRelation(a, b) {
+        const ctx = this.ctx;
+        const angle = Math.atan2(b.y - a.y, b.x - a.x);
+        const x0 = a.x + Math.cos(angle) * a.r * 1.15;
+        const y0 = a.y + Math.sin(angle) * a.r * 1.15;
+        const x1 = b.x - Math.cos(angle) * b.r * 1.15;
+        const y1 = b.y - Math.sin(angle) * b.r * 1.15;
+        const head = Math.max(this.tile * 0.22, 4);
+
+        ctx.strokeStyle = `hsla(${this.hue + 50}, 80%, 80%, 0.13)`;
+        ctx.lineWidth = Math.max(this.tile * 0.03, 1);
+        ctx.setLineDash([head * 0.7, head * 0.6]);
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 - Math.cos(angle - 0.4) * head, y1 - Math.sin(angle - 0.4) * head);
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 - Math.cos(angle + 0.4) * head, y1 - Math.sin(angle + 0.4) * head);
+        ctx.stroke();
+    }
+
+    /**
      * Lávová řeka pod úrovní země. Hladina se vlní a posouvá, přes propasti
      * v podlaze je vidět dolů do ní.
      */
@@ -864,6 +1166,7 @@ export class Game {
                 if (this.level.isSolid(x, y)) {
                     if (this.level.theme === 'ice') this.drawIceBlock(x, y);
                     else if (this.level.theme === 'desert') this.drawSandBlock(x, y);
+                    else if (this.level.theme === 'math') this.drawMathBlock(x, y);
                     else this.drawBlock(x, y);
                 }
 
@@ -1011,7 +1314,7 @@ export class Game {
     }
 
     // Hrot podle tématu: ledový krápník, plamen/sopka v ohnivém,
-    // kaktus/sup v pouštním, jinak klasický
+    // kaktus/sup v pouštním, operátor Δ/∇ v matematickém, jinak klasický
     drawHazard(x, y, up) {
         if (this.level.theme === 'ice') {
             this.drawIcicle(x, y, up);
@@ -1021,6 +1324,8 @@ export class Game {
         } else if (this.level.theme === 'desert') {
             if (up) this.drawCactus(x, y);
             else this.drawVulture(x, y);
+        } else if (this.level.theme === 'math') {
+            this.drawOperator(x, y, up);
         } else {
             this.drawSpike(x, y, up);
         }
@@ -1378,6 +1683,116 @@ export class Game {
         ctx.lineJoin = 'miter';
     }
 
+    /**
+     * Blok matematického světa: dlaždice rozdělená na čtyři pole jako políčko
+     * rýsovacího papíru, na ní bledě narýsovaný symbol. Který to je, se losuje
+     * ze šumu podle souřadnic políčka – při posunu kamery se tedy symboly
+     * nepřeskládají a zeď zůstane pořád stejná.
+     */
+    drawMathBlock(x, y) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+        const h = this.hue;
+
+        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        grad.addColorStop(0, `hsl(${h}, 42%, 17%)`);
+        grad.addColorStop(1, `hsl(${h + 10}, 45%, 10%)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(px, py, t + 1, t + 1);
+
+        // Vnitřní rastr dlaždice
+        ctx.strokeStyle = `hsla(${h + 30}, 70%, 75%, 0.12)`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px + t * 0.5, py);
+        ctx.lineTo(px + t * 0.5, py + t);
+        ctx.moveTo(px, py + t * 0.5);
+        ctx.lineTo(px + t, py + t * 0.5);
+        ctx.stroke();
+
+        // Symbol vyrytý do bloku – jen naznačený, ať nepřebije překážky
+        ctx.strokeStyle = `hsla(${h + 40}, 85%, 82%, 0.2)`;
+        ctx.lineWidth = Math.max(t * 0.045, 1);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        mathGlyph(ctx, BLOCK_GLYPHS[Math.floor(noise(x * 13 + y * 7) * BLOCK_GLYPHS.length)],
+            px + t * 0.5, py + t * 0.5, t * 0.52);
+        ctx.stroke();
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+
+        ctx.strokeStyle = `hsl(${h + 25}, 85%, 74%)`;
+        ctx.lineWidth = Math.max(t * 0.06, 1.5);
+        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+
+        // Horní hrana bloku je světlejší – lépe je vidět, kam se dá doskočit
+        if (!this.level.isSolid(x, y - 1)) {
+            ctx.fillStyle = `hsl(${h + 30}, 95%, 82%)`;
+            ctx.fillRect(px, py, t + 1, Math.max(t * 0.1, 2));
+        }
+    }
+
+    /**
+     * Operátor Δ (ze země) a ∇ (ze stropu) – matematická obdoba hrotu.
+     * Trojúhelník je narýsovaný jako v učebnici: rysky shodnosti na stranách
+     * a oblouček úhlu u špičky. Barva zůstane výstražná (jako u hrotů), aby
+     * bylo i v bledém pozadí hned poznat, co zabíjí.
+     */
+    drawOperator(x, y, up) {
+        const ctx = this.ctx;
+        const t = this.tile;
+        const px = this.px(x);
+        const py = this.py(y);
+        const base = up ? py + t : py;              // strana přiléhající k podkladu
+        const tip = up ? py + t * 0.06 : py + t * 0.94;
+        const left = px + t * 0.08;
+        const right = px + t * 0.92;
+        const mid = px + t * 0.5;
+
+        // Záře pod operátorem, ať nesplyne s narýsovaným pozadím
+        const glow = ctx.createRadialGradient(mid, (base + tip) / 2, 0, mid, (base + tip) / 2, t * 0.8);
+        glow.addColorStop(0, 'rgba(255, 77, 109, 0.3)');
+        glow.addColorStop(1, 'rgba(255, 77, 109, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(px - t * 0.3, py - t * 0.1, t * 1.6, t * 1.2);
+
+        ctx.beginPath();
+        ctx.moveTo(left, base);
+        ctx.lineTo(mid, tip);
+        ctx.lineTo(right, base);
+        ctx.closePath();
+
+        const grad = ctx.createLinearGradient(px, base, px, tip);
+        grad.addColorStop(0, 'rgba(120, 12, 40, 0.85)');
+        grad.addColorStop(1, 'rgba(255, 120, 150, 0.9)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.strokeStyle = '#ff4d6d';
+        ctx.lineWidth = Math.max(t * 0.06, 1.5);
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Rysky shodnosti na obou ramenech a oblouček úhlu u špičky
+        ctx.strokeStyle = 'rgba(255, 235, 240, 0.8)';
+        ctx.lineWidth = Math.max(t * 0.035, 1);
+        ctx.beginPath();
+        for (const dir of [-1, 1]) {
+            const ax = mid + dir * (right - mid) * 0.5;
+            const ay = (base + tip) / 2;
+            ctx.moveTo(ax - t * 0.05 * dir, ay - t * 0.05);
+            ctx.lineTo(ax + t * 0.05 * dir, ay + t * 0.05);
+        }
+        const arc = t * 0.22;
+        ctx.moveTo(mid - arc * 0.5, tip + (up ? arc : -arc));
+        ctx.quadraticCurveTo(mid, tip + (up ? arc * 1.5 : -arc * 1.5),
+            mid + arc * 0.5, tip + (up ? arc : -arc));
+        ctx.stroke();
+        ctx.lineJoin = 'miter';
+    }
+
     drawPad(x, y) {
         const ctx = this.ctx;
         const t = this.tile;
@@ -1398,11 +1813,33 @@ export class Game {
         const used = this.usedRings.has(`${x},${y}`);
         const pulse = 0.86 + 0.1 * Math.sin(this.clock * 5);
 
+        const cx = this.px(x + 0.5);
+        const cy = this.py(y + 0.5);
+        const r = t * 0.34 * pulse;
+
         ctx.strokeStyle = used ? 'rgba(255, 209, 102, 0.25)' : '#ffd166';
         ctx.lineWidth = Math.max(t * 0.11, 2);
         ctx.beginPath();
-        ctx.arc(this.px(x + 0.5), this.py(y + 0.5), t * 0.34 * pulse, 0, Math.PI * 2);
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.stroke();
+
+        // V matematickém světě je z prstence křivkový integrál – po obvodu
+        // objíždí hrot, který ukazuje orientaci křivky (∮)
+        if (this.level.theme === 'math') {
+            const angle = this.clock * 1.6;
+            const ax = cx + Math.cos(angle) * r;
+            const ay = cy + Math.sin(angle) * r;
+            const dir = angle + Math.PI / 2;        // hrot míří po tečně
+            const s = r * 0.5;
+
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.beginPath();
+            ctx.moveTo(ax + Math.cos(dir) * s, ay + Math.sin(dir) * s);
+            ctx.lineTo(ax + Math.cos(dir + 2.4) * s, ay + Math.sin(dir + 2.4) * s);
+            ctx.lineTo(ax + Math.cos(dir - 2.4) * s, ay + Math.sin(dir - 2.4) * s);
+            ctx.closePath();
+            ctx.fill();
+        }
     }
 
     drawPortal(x, y, up) {
@@ -1436,14 +1873,29 @@ export class Game {
         const t = this.tile;
         // Mince se "otáčí" – šířka se mění, výška zůstává
         const w = Math.abs(Math.cos(this.clock * 2.5)) * 0.7 + 0.3;
+        const cx = this.px(x + 0.5);
+        const cy = this.py(y + 0.5);
 
         ctx.fillStyle = '#ffd166';
         ctx.strokeStyle = '#8a5a00';
         ctx.lineWidth = Math.max(t * 0.04, 1);
         ctx.beginPath();
-        ctx.ellipse(this.px(x + 0.5), this.py(y + 0.5), t * 0.26 * w, t * 0.26, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, t * 0.26 * w, t * 0.26, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+
+        // Matematická mince je ražená na π – jen když je zrovna otočená k hráči,
+        // jinak by se ražba mačkala do čáry
+        if (this.level.theme === 'math' && w > 0.62) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(w, 1);
+            ctx.lineWidth = Math.max(t * 0.05, 1.2);
+            ctx.lineCap = 'round';
+            mathGlyph(ctx, 'pi', 0, 0, t * 0.34);
+            ctx.stroke();
+            ctx.restore();
+        }
     }
 
     drawFinish() {
@@ -1635,6 +2087,107 @@ function flamePath(ctx, cx, base, halfWidth, height, sway) {
         cx + halfWidth, base
     );
     ctx.closePath();
+}
+
+/**
+ * Cesta matematického symbolu vepsaná do čtverce o straně `size` se středem
+ * [cx, cy] (bez vykreslení – volající si zvolí tah). Symboly jsou rýsované
+ * z čar a křivek schválně: písmo by se muselo spolehnout na to, že cizí
+ * zařízení má daný znak ve fontu, a jinak by ukázalo prázdný obdélníček.
+ */
+function mathGlyph(ctx, kind, cx, cy, size) {
+    const h = size / 2;
+    const w = size * 0.34;
+    ctx.beginPath();
+
+    switch (kind) {
+        case 'sum':         // ∑ – suma
+            ctx.moveTo(cx + w, cy - h);
+            ctx.lineTo(cx - w, cy - h);
+            ctx.lineTo(cx + w * 0.2, cy);
+            ctx.lineTo(cx - w, cy + h);
+            ctx.lineTo(cx + w, cy + h);
+            break;
+
+        case 'product':     // ∏ – součin
+            ctx.moveTo(cx - w * 1.1, cy - h);
+            ctx.lineTo(cx + w * 1.1, cy - h);
+            ctx.moveTo(cx - w * 0.62, cy - h);
+            ctx.lineTo(cx - w * 0.62, cy + h);
+            ctx.moveTo(cx + w * 0.62, cy - h);
+            ctx.lineTo(cx + w * 0.62, cy + h);
+            break;
+
+        case 'contour':     // ∮ – křivkový integrál (integrál s kroužkem)
+            ctx.moveTo(cx + w * 0.6, cy);
+            ctx.arc(cx, cy, w * 0.6, 0, TAU);
+            // dál stejně jako integrál
+        case 'integral':    // ∫
+            ctx.moveTo(cx + w * 0.9, cy - h);
+            ctx.bezierCurveTo(cx + w * 0.1, cy - h * 1.3, cx + w * 0.4, cy - h * 0.3, cx, cy);
+            ctx.bezierCurveTo(cx - w * 0.4, cy + h * 0.3, cx - w * 0.1, cy + h * 1.3, cx - w * 0.9, cy + h);
+            break;
+
+        case 'root':        // √ – odmocnina i s vodorovnou čarou nad výrazem
+            ctx.moveTo(cx - w, cy + h * 0.1);
+            ctx.lineTo(cx - w * 0.55, cy + h * 0.6);
+            ctx.lineTo(cx - w * 0.1, cy - h);
+            ctx.lineTo(cx + w, cy - h);
+            break;
+
+        case 'pi':          // π
+            ctx.moveTo(cx - w, cy - h * 0.6);
+            ctx.lineTo(cx + w, cy - h * 0.6);
+            ctx.moveTo(cx - w * 0.45, cy - h * 0.6);
+            ctx.lineTo(cx - w * 0.6, cy + h);
+            ctx.moveTo(cx + w * 0.45, cy - h * 0.6);
+            ctx.lineTo(cx + w * 0.6, cy + h);
+            break;
+
+        case 'infinity':    // ∞ – dvě smyčky z jednoho tahu
+            ctx.moveTo(cx, cy);
+            ctx.bezierCurveTo(cx - w * 0.6, cy - h, cx - w * 1.4, cy - h * 0.5, cx - w * 1.4, cy);
+            ctx.bezierCurveTo(cx - w * 1.4, cy + h * 0.5, cx - w * 0.6, cy + h, cx, cy);
+            ctx.bezierCurveTo(cx + w * 0.6, cy - h, cx + w * 1.4, cy - h * 0.5, cx + w * 1.4, cy);
+            ctx.bezierCurveTo(cx + w * 1.4, cy + h * 0.5, cx + w * 0.6, cy + h, cx, cy);
+            break;
+
+        case 'nabla':       // ∇ – gradient
+            ctx.moveTo(cx - w * 1.1, cy - h);
+            ctx.lineTo(cx + w * 1.1, cy - h);
+            ctx.lineTo(cx, cy + h);
+            ctx.closePath();
+            break;
+
+        case 'delta':       // Δ – přírůstek
+            ctx.moveTo(cx - w * 1.1, cy + h);
+            ctx.lineTo(cx + w * 1.1, cy + h);
+            ctx.lineTo(cx, cy - h);
+            ctx.closePath();
+            break;
+
+        case 'partial':     // ∂ – parciální derivace
+            ctx.ellipse(cx, cy + h * 0.3, w * 0.75, h * 0.62, 0, 0, TAU);
+            ctx.moveTo(cx + w * 0.72, cy + h * 0.1);
+            ctx.bezierCurveTo(cx + w * 0.8, cy - h * 0.7, cx + w * 0.1, cy - h * 1.05,
+                cx - w * 0.6, cy - h * 0.7);
+            break;
+
+        case 'phi':         // φ
+            ctx.moveTo(cx, cy - h);
+            ctx.lineTo(cx, cy + h);
+            ctx.moveTo(cx + w * 0.85, cy);
+            ctx.ellipse(cx, cy, w * 0.85, h * 0.6, 0, 0, TAU);
+            break;
+
+        case 'lambda':      // λ
+            ctx.moveTo(cx - w, cy + h);
+            ctx.lineTo(cx + w * 0.3, cy - h);
+            ctx.lineTo(cx + w, cy + h);
+            ctx.moveTo(cx - w * 0.8, cy - h * 0.55);
+            ctx.lineTo(cx - w * 0.25, cy + h * 0.1);
+            break;
+    }
 }
 
 // Cesta zaobleného obdélníku (bez vykreslení – volající si zvolí fill/stroke)
