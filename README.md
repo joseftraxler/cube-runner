@@ -166,6 +166,7 @@ tools/
 ├── playtest.mjs        automatické projití všech levelů v prohlížeči
 ├── swtest.mjs          test service workeru (offline vs. aktuálnost souborů)
 ├── audiotest.mjs       test zvuku (měří signál na výstupu hry)
+├── perftest.mjs        měření ceny snímku v jednotlivých tématech
 └── screenshot.mjs      náhled hry do README
 ```
 
@@ -261,6 +262,7 @@ v opravdovém prohlížeči a vyrobit náhled:
 node tools/playtest.mjs               # projde všech 15 levelů skutečným kódem hry
 node tools/swtest.mjs                 # ověří chování service workeru (offline vs. aktuálnost)
 node tools/audiotest.mjs              # ověří, že z hry opravdu leze zvuk
+node tools/perftest.mjs               # změří, kolik stojí snímek v každém tématu
 node tools/screenshot.mjs             # přegeneruje docs/preview.png
 ```
 

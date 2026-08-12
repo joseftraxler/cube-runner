@@ -23,7 +23,11 @@ python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely dob�
 node tools/playtest.mjs               # projde všech 15 levelů v Chromiu
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
+node tools/perftest.mjs               # změří cenu snímku v každém tématu
 ```
+
+Po zásahu do kreslení pusť `perftest.mjs` a porovnej témata mezi sebou – čísla
+jsou relativní k počítači, na kterém běží, ale poměry mezi tématy sedí.
 
 Nástroje v Node.js potřebují Chromium přes `playwright` (`npm i -D playwright`) –
 proto nejsou součástí hry, jen vývoje. `node tools/playtest.mjs --headed` ukáže,
@@ -45,12 +49,17 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
   `Orbiter` ji implementují a **nesahají na `this.game`** – dostanou kontext
   i pozici parametrem. Tuhle nezávislost `draw` na hře zachovej.
 - **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Horká témata
-  (`Game.hazy` – ohnivé a pouštní) si `drawWorld` nechají vykreslit na pomocné
-  plátno a přenesou ho po pruzích rozvlněné horkým vzduchem (`drawHeatHaze`) –
-  texty se tím vlnit nesmí.
+  (`Game.hazy` – ohnivé a pouštní) nechají hotový obraz rozvlnit horkým vzduchem
+  (`drawHeatHaze`) – texty se tím vlnit nesmí.
   Ozdoby závislé na místě (námraza, fáze plamenů, tvar kaktusu) počítej
   z `noise(x, y)`, ne z `Math.random()`, jinak budou při posunu kamery
   poskakovat.
+- **Co se mezi snímky nemění, kresli jednou a pak kopíruj.** Rasterizace je
+  na slabších zařízeních dražší než všechno ostatní dohromady (viz *Výkon*):
+  bloky se berou z dlaždic (`bakeBlock`), nehybné pozadí z obrazu
+  (`drawBackdrop`). Mezipaměti platí pro téma, odstín a velikost políčka –
+  zahazuje je `#dropStaleCaches` v `resize()`. Přibude-li kresba, která se
+  mění každý snímek, patří mimo ně.
 - **Matematické symboly se rýsují čarami (`mathGlyph`), ne písmem.** Znaky jako
   ∑ nebo ∮ nemá každé zařízení ve fontu a místo symbolu by se ukázal prázdný
   obdélníček; rýsovaný tah navíc sedí k papíru v pozadí. Obrazce v pozadí
@@ -75,7 +84,27 @@ Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
 `scripts.js` (bootstrap – canvas, seznam levelů, ovládání, spuštění).
 
 Instance hry visí na `window.cubeRunner` – sahá po ní ladění v konzoli i nástroje
-(`playtest.mjs`, `screenshot.mjs`, `audiotest.mjs`), takže ji tam nech.
+(`playtest.mjs`, `screenshot.mjs`, `audiotest.mjs`, `perftest.mjs`), takže ji tam nech.
+
+## Výkon
+
+Hra běží na telefonech, takže **na snímek je rozpočet pár milisekund**. Měření
+(`tools/perftest.mjs`) ukázalo, kde se peníze utrácejí, a z toho plynou tři
+pravidla:
+
+- **Nejdražší je rasterizace, ne JavaScript.** Fyzika stojí tisíciny milisekundy,
+  zvuk kolem procenta času – ale přemalovat plátno stojí milisekundy. Optimalizuj
+  podle toho, kolik pixelů a kolik kreslicích volání ze snímku leze, ne podle
+  toho, kolik je v kódu řádků.
+- **Kopie plátna se nesmí zvětšovat ani posouvat o zlomky pixelu.** Roztažená
+  kopie se počítá pixel po pixelu, kopie 1:1 na celé pixely je přesun paměti.
+  Vlnění horkého vzduchu na tom stálo: než se srovnalo (celá čísla, jen spodek
+  obrazu, žádná cesta přes pomocné plátno a zpátky), bralo si přes 11 ms ze
+  snímku – víc než celý zbytek hry.
+- **Předkreslené kusy obrazu drž stálé.** Dlaždice bloků se vybírají ze souřadnic
+  políčka (`BLOCK_VARIANTS` podob), ne z pořadí kreslení – jinak by se kresba při
+  posunu kamery přeskládávala. Totéž u pozadí: obraz v `drawBackdrop` se smí jen
+  posouvat do strany, cokoliv animovaného patří až přes něj.
 
 ## Ovládání
 

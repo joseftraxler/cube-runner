@@ -22,9 +22,19 @@ const TAU = Math.PI * 2;
 // Kolik vloček sněhu / jisker nad lávou má prostředí v pozadí
 const WEATHER_COUNT = 90;
 
+// Odkud dolů se obraz vlní horkým vzduchem (podíl výšky plátna). Horko stoupá
+// od lávy a od písku, takže horní část obrazu se vlnit nemusí – a nemusí se
+// tam ani přepočítávat, což je na slabších zařízeních to hlavní.
+const HAZE_FROM = 0.45;
+
 // Kolik symbolů plave v hloubce matematického světa a kolik je v něm obrazců
-const MATH_SYMBOL_COUNT = 24;
-const MATH_FIGURES = 5;
+const MATH_SYMBOL_COUNT = 14;
+const MATH_FIGURES = 4;
+
+// Kolik různých podob bloku se předkreslí do dlaždic. Podoba se vybírá ze
+// souřadnic políčka, takže je pro dané místo stálá (jako dřív šum) – jen se
+// po dvanácti blocích opakuje, což mezi sousedy není poznat.
+const BLOCK_VARIANTS = 12;
 
 /*
  * Matematické symboly se kreslí čarami (`mathGlyph`), ne písmem. Znaky jako
@@ -56,6 +66,13 @@ export class Game {
         this.clock = 0;         // běží pořád, pro animace pozadí a překážek
         this.holdJump = false;  // drží hráč tlačítko skoku? (GD: drženým skáče dál)
         this.particles = [];
+
+        // Předkreslené kusy obrazu – co se mezi snímky nemění, se kreslí jednou
+        // a pak už jen kopíruje. Platí pro dané téma a velikost políčka, takže
+        // se to zahazuje při `resize()` (ten se volá i po načtení levelu).
+        this.blockTiles = new Map();   // dlaždice bloků podle podoby
+        this.backdrop = null;          // nehybné pozadí (obloha s mřížkou / papír)
+        this.textWidths = new Map();   // změřené šířky textů v HUD
         this.sound = new Sound();
         this.haptics = new Haptics();
 
@@ -261,13 +278,32 @@ export class Game {
         this.tile = Math.max(1, Math.min(availH / rows, this.c.width / MIN_VIEW_TILES));
         this.offsetY = HUD + (availH - this.tile * rows) / 2 - this.level.viewTop * this.tile;
 
-        // Horká témata kreslí svět stranou, aby se dal rozvlnit horkým vzduchem
+        this.#dropStaleCaches();
+
+        // Horká témata si odkládají stranou spodek obrazu, který se vlní
         if (this.hazy) {
+            const {from} = this.hazeGeometry();
             this.haze ??= document.createElement('canvas');
             this.haze.width = this.c.width;
-            this.haze.height = this.c.height;
+            this.haze.height = Math.max(1, this.c.height - from);
             this.hazeCtx = this.haze.getContext('2d');
         }
+    }
+
+    /**
+     * Zahodí předkreslené kusy obrazu, když už neplatí. Kreslí se do nich podle
+     * tématu, odstínu a velikosti políčka – dokud se ani jedno nezměnilo, není
+     * proč je zahazovat. `resize()` se totiž volá i po každé smrti (level se
+     * načítá znovu) a překreslovat kvůli tomu dlaždice by bylo zbytečné.
+     */
+    #dropStaleCaches() {
+        const key = `${this.level.theme}|${this.hue}|${this.tile}|${this.c.width}×${this.c.height}`;
+        if (key === this.cacheKey) return;
+
+        this.cacheKey = key;
+        this.blockTiles.clear();
+        this.textWidths.clear();
+        this.backdrop = null;
     }
 
     loop(now) {
@@ -516,17 +552,10 @@ export class Game {
     }
 
     render() {
-        // V horkých tématech se svět nakreslí stranou a na plátno se přenese
-        // rozvlněný horkým vzduchem. HUD a překryv se nevlní, ať jdou číst.
-        const hazed = this.hazy && this.hazeCtx;
-        const main = this.ctx;
-
-        if (hazed) this.ctx = this.hazeCtx;
         this.drawWorld();
-        if (hazed) {
-            this.ctx = main;
-            this.drawHeatHaze();
-        }
+        // V horkých tématech se spodek hotového obrazu ještě rozvlní horkým
+        // vzduchem. HUD a překryv jdou až po tom, ať se texty nevlní.
+        if (this.hazy && this.hazeCtx) this.drawHeatHaze();
 
         this.drawHud();
         this.drawOverlay();
@@ -550,10 +579,26 @@ export class Game {
         if (this.level.theme !== 'fire') this.drawGroundLine();
     }
 
+    // Výška pruhu vlnění a řádek, odkud dolů se obraz vlní. Počítá se na jednom
+    // místě, protože podle toho se v `resize()` měří i odkládací plátno.
+    hazeGeometry() {
+        const band = Math.max(4, Math.round(this.c.height / 110));
+        return {band, from: Math.round(this.c.height * HAZE_FROM / band) * band};
+    }
+
     /**
-     * Přenese hotový obraz světa po vodorovných pruzích, každý posunutý podle
-     * sinusovky – vypadá to jako chvění vzduchu nad ohněm. Dole u lávy se vlní
-     * víc než nahoře. Pruh se kreslí o kus širší, aby na krajích nevznikly mezery.
+     * Rozvlní spodek hotového obrazu, jako by nad lávou nebo nad rozpáleným
+     * pískem stoupal horký vzduch. Spodní část plátna se odloží stranou a vrátí
+     * se po vodorovných pruzích, každý posunutý podle sinusovky. Výchylka roste
+     * od nuly na horní hranici pruhů, aby tam nebyl vidět šev – horko stejně
+     * stoupá zdola, takže se nahoře vlnit nemá co.
+     *
+     * Vlní se schválně jen spodek obrazu (`HAZE_FROM`) a **kopie se nezvětšují
+     * ani neposouvají o zlomky pixelu**: roztažený pruh se musí přepočítat pixel
+     * po pixelu a přenášet takhle celé plátno stokrát za snímek bylo zdaleka
+     * nejdražší místo celé hry (přes 11 ms na snímek). Ze stejného důvodu se
+     * svět kreslí rovnou na plátno a stranou jde jen ten vlnící se kus – cesta
+     * přes pomocné plátno a zpátky stála víc než všechno vlnění dohromady.
      *
      * Výchylka je schválně sotva znatelná (do zlomku políčka): má to být pocit
      * horka na okraji vidění, ne rozostřená hra – hráč musí přesně vidět, kam skáče.
@@ -562,15 +607,17 @@ export class Game {
         const ctx = this.ctx;
         const w = this.c.width;
         const h = this.c.height;
-        const band = Math.max(4, Math.round(h / 110));
+        const {band, from} = this.hazeGeometry();
         // Nad pouští se vzduch chvěje míň než nad ohněm
         const amp = Math.max(1, this.tile * (this.level.theme === 'desert' ? 0.014 : 0.022));
-        const pad = amp * 2;
 
-        for (let y = 0; y < h; y += band) {
+        this.hazeCtx.drawImage(this.c, 0, from, w, h - from, 0, 0, w, h - from);
+
+        for (let y = from; y < h; y += band) {
             const src = Math.min(band, h - y);
-            const dx = Math.sin(this.clock * 2 + y * 0.04) * amp * (0.3 + y / h);
-            ctx.drawImage(this.haze, 0, y, w, src, dx - pad, y, w + pad * 2, src);
+            const rise = (y - from) / (h - from);      // dole plná výchylka, nahoře nulová
+            const dx = Math.round(Math.sin(this.clock * 2 + y * 0.04) * amp * rise);
+            if (dx) ctx.drawImage(this.haze, 0, y - from, w, src, dx, y, w, src);
         }
     }
 
@@ -590,30 +637,58 @@ export class Game {
             return;
         }
 
-        const grad = ctx.createLinearGradient(0, 0, 0, this.c.height);
-        grad.addColorStop(0, `hsl(${h}, 55%, 20%)`);
-        grad.addColorStop(1, `hsl(${h}, 60%, 7%)`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, this.c.width, this.c.height);
+        // Obloha s mřížkou se nemění, jen posouvá – kreslí se z hotového obrazu
+        this.drawBackdrop((img, width, period) => {
+            const grad = img.createLinearGradient(0, 0, 0, this.c.height);
+            grad.addColorStop(0, `hsl(${h}, 55%, 20%)`);
+            grad.addColorStop(1, `hsl(${h}, 60%, 7%)`);
+            img.fillStyle = grad;
+            img.fillRect(0, 0, width, this.c.height);
 
-        // Mřížka v pozadí se posouvá pomaleji než hra (parallax)
-        const t = this.tile * 2;
-        const shift = (this.camX * this.tile * 0.35) % t;
-        ctx.strokeStyle = `hsla(${h}, 70%, 65%, 0.10)`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        for (let x = -shift; x < this.c.width; x += t) {
-            ctx.moveTo(Math.round(x) + 0.5, 0);
-            ctx.lineTo(Math.round(x) + 0.5, this.c.height);
-        }
-        for (let y = ((this.offsetY % t) + t) % t; y < this.c.height; y += t) {
-            ctx.moveTo(0, Math.round(y) + 0.5);
-            ctx.lineTo(this.c.width, Math.round(y) + 0.5);
-        }
-        ctx.stroke();
+            img.strokeStyle = `hsla(${h}, 70%, 65%, 0.10)`;
+            img.lineWidth = 1;
+            img.beginPath();
+            for (let x = 0; x < width; x += period) {
+                img.moveTo(x + 0.5, 0);
+                img.lineTo(x + 0.5, this.c.height);
+            }
+            for (let y = wrap(this.offsetY, period); y < this.c.height; y += period) {
+                img.moveTo(0, Math.round(y) + 0.5);
+                img.lineTo(width, Math.round(y) + 0.5);
+            }
+            img.stroke();
+        });
 
         if (this.level.theme === 'ice') this.drawWeather(false);
         if (this.level.theme === 'fire') this.drawWeather(true);
+    }
+
+    /**
+     * Nehybné pozadí (obloha s mřížkou, rýsovací papír) se vykreslí jednou do
+     * obrázku o periodu vzoru širšího než plátno a pak se každý snímek jen
+     * posune a zkopíruje. Kreslit desítky čar přes celé plátno pokaždé znovu
+     * je zbytečné – mění se u nich jen posun do strany.
+     *
+     * `paint(ctx, width, period)` dostane rozteč hrubé mřížky (celá čísla, ať
+     * čáry po posunu nezešednou) a kreslí do obrázku od nuly; hra ho pak
+     * posune o `shift` vlevo. Obrázek platí pro jedno téma a jednu velikost
+     * políčka – zahazuje ho `resize()`.
+     */
+    drawBackdrop(paint) {
+        const period = Math.max(2, Math.round(this.tile * 2));
+
+        if (!this.backdrop) {
+            const img = document.createElement('canvas');
+            img.width = this.c.width + period;
+            img.height = this.c.height;
+            paint(img.getContext('2d'), img.width, period);
+            this.backdrop = img;
+            this.backdropPeriod = period;
+        }
+
+        // Parallax: pozadí se posouvá pomaleji než hra
+        const shift = wrap(Math.round(this.camX * this.tile * 0.35), this.backdropPeriod);
+        this.ctx.drawImage(this.backdrop, -shift, 0);
     }
 
     /**
@@ -837,44 +912,41 @@ export class Game {
      * první pohled poznat, kde je blok a kde překážka.
      */
     drawMathSpace() {
-        const ctx = this.ctx;
-        const h = this.hue;
-
-        const grad = ctx.createLinearGradient(0, 0, 0, this.c.height);
-        grad.addColorStop(0, `hsl(${h}, 45%, 13%)`);
-        grad.addColorStop(0.6, `hsl(${h + 12}, 50%, 9%)`);
-        grad.addColorStop(1, `hsl(${h + 20}, 55%, 5%)`);
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, this.c.width, this.c.height);
-
-        this.drawGraphPaper();
+        // Papír i s oblohou se posouvá jen do strany – kreslí se z hotového obrazu
+        this.drawBackdrop((img, width, period) => this.paintGraphPaper(img, width, period));
         this.drawMathSymbols();
         this.drawMathFigures();
     }
 
     /**
      * Rýsovací papír: jemný rastr, přes něj hrubší a v místě mapy vodorovná osa
-     * s ryskami. Svislá čára rastru se posouvá s kamerou, aby byl vidět pohyb.
+     * s ryskami. Kreslí se do předem připraveného obrazu (`drawBackdrop`), ten
+     * se pak jen posouvá s kamerou – proto se tady s posunem nepočítá a rozteče
+     * jsou celá čísla, aby čáry zůstaly ostré.
      */
-    drawGraphPaper() {
-        const ctx = this.ctx;
-        const w = this.c.width;
+    paintGraphPaper(ctx, width, period) {
         const h = this.c.height;
         const shade = this.hue;
 
-        for (const [size, alpha] of [[0.5, 0.05], [2, 0.11]]) {
-            const step = this.tile * size;
-            const shift = (this.camX * this.tile * 0.35) % step;
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, `hsl(${shade}, 45%, 13%)`);
+        grad.addColorStop(0.6, `hsl(${shade + 12}, 50%, 9%)`);
+        grad.addColorStop(1, `hsl(${shade + 20}, 55%, 5%)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, width, h);
+
+        // Jemný rastr má čtvrtinovou rozteč hrubého, takže se opakují spolu
+        for (const [step, alpha] of [[period / 4, 0.05], [period, 0.11]]) {
             ctx.strokeStyle = `hsla(${shade}, 75%, 70%, ${alpha})`;
             ctx.lineWidth = 1;
             ctx.beginPath();
-            for (let x = -shift; x < w; x += step) {
+            for (let x = 0; x < width; x += step) {
                 ctx.moveTo(Math.round(x) + 0.5, 0);
                 ctx.lineTo(Math.round(x) + 0.5, h);
             }
-            for (let y = ((this.offsetY % step) + step) % step; y < h; y += step) {
+            for (let y = wrap(this.offsetY, step); y < h; y += step) {
                 ctx.moveTo(0, Math.round(y) + 0.5);
-                ctx.lineTo(w, Math.round(y) + 0.5);
+                ctx.lineTo(width, Math.round(y) + 0.5);
             }
             ctx.stroke();
         }
@@ -886,10 +958,8 @@ export class Game {
         ctx.lineWidth = Math.max(this.tile * 0.03, 1);
         ctx.beginPath();
         ctx.moveTo(0, axis);
-        ctx.lineTo(w, axis);
-        const step = this.tile * 2;
-        const shift = (this.camX * this.tile * 0.35) % step;
-        for (let x = -shift; x < w; x += step) {
+        ctx.lineTo(width, axis);
+        for (let x = 0; x < width; x += period) {
             ctx.moveTo(Math.round(x) + 0.5, axis - this.tile * 0.12);
             ctx.lineTo(Math.round(x) + 0.5, axis + this.tile * 0.12);
         }
@@ -959,13 +1029,18 @@ export class Game {
             const a = spot(i);
             const b = spot(i + 1);
             // Vztah se kreslí jen mezi obrazci, které jsou zrovna vedle sebe –
-            // přes celé plátno by z toho byla pavučina
-            if (Math.abs(b.x - a.x) < w * 0.45) this.drawRelation(a, b);
+            // přes celé plátno by z toho byla pavučina. A jen když je aspoň
+            // jeden z nich vidět, jinak by se šipka rýsovala pro nic za nic.
+            if (Math.abs(b.x - a.x) >= w * 0.45) continue;
+            if (Math.min(a.x, b.x) > w || Math.max(a.x, b.x) < 0) continue;
+            this.drawRelation(a, b);
         }
 
         for (let i = 0; i < MATH_FIGURES; i++) {
             const {x, y, r, turn} = spot(i);
-            if (x < -r * 3 || x > w + r * 3) continue;
+            // Co je mimo plátno, se nekreslí. Jednotková kružnice sahá dál
+            // doprava, protože z ní vybíhá sinusovka.
+            if (x + r * (i === 0 ? 4.4 : 1.4) < 0 || x - r * 1.4 > w) continue;
             if (i === 0) this.drawUnitCircle(x, y, r, turn);
             else this.drawPolygonFigure(x, y, r, turn, 3 + Math.floor(noise(i * 37 + 9) * 4));
         }
@@ -1059,11 +1134,14 @@ export class Game {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Sinusovka napravo od kružnice – úhel průvodiče je její počátek
+        // Sinusovka napravo od kružnice – úhel průvodiče je její počátek.
+        // Dílků je jen tolik, aby byla křivka na pohled hladká; každý navíc
+        // se v pozadí ztratí, ale zaplatí se za něj.
         ctx.strokeStyle = ink;
         ctx.beginPath();
-        for (let k = 0; k <= 48; k++) {
-            const t = k / 48;
+        const steps = Math.max(16, Math.min(32, Math.round(r * 0.5)));
+        for (let k = 0; k <= steps; k++) {
+            const t = k / steps;
             const x = cx + r * 1.35 + t * r * 3;
             const y = cy + Math.sin(turn + t * TAU) * r;
             if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
@@ -1163,12 +1241,7 @@ export class Game {
 
         for (let y = this.level.viewTop; y < this.level.height; y++) {
             for (let x = from; x < to; x++) {
-                if (this.level.isSolid(x, y)) {
-                    if (this.level.theme === 'ice') this.drawIceBlock(x, y);
-                    else if (this.level.theme === 'desert') this.drawSandBlock(x, y);
-                    else if (this.level.theme === 'math') this.drawMathBlock(x, y);
-                    else this.drawBlock(x, y);
-                }
+                if (this.level.isSolid(x, y)) this.drawBlock(x, y);
 
                 const hazard = this.level.hazardAt(x, y);
                 if (hazard) this.drawHazard(x, y, hazard === 'spikeUp');
@@ -1185,51 +1258,104 @@ export class Game {
         if (this.level.finishX < this.level.width) this.drawFinish();
     }
 
+    /**
+     * Blok se nekreslí pokaždé znovu, ale kopíruje se z hotové dlaždice.
+     * Vykreslit v každém snímku pro každý blok přechod, námrazu, vrstvy
+     * pískovce nebo vyrytý symbol byla nejdražší část kreslení mapy – a přitom
+     * je pro dané místo pořád stejná.
+     *
+     * Podoba dlaždice se vybírá **ze souřadnic políčka** (`BLOCK_VARIANTS`
+     * podob), takže se blok při posunu kamery nemění; kreslí se na celé pixely,
+     * aby se kopie nemusela přepočítávat a hrany zůstaly ostré.
+     */
     drawBlock(x, y) {
-        const ctx = this.ctx;
+        // Volná horní hrana se kreslí jinak (sníh, navátý písek, světlá linka)
+        const capped = this.level.isSolid(x, y - 1);
+        const variant = Math.floor(noise(x * 13 + y * 7) * BLOCK_VARIANTS);
+        const key = variant * 2 + (capped ? 1 : 0);
+
+        let tile = this.blockTiles.get(key);
+        if (!tile) {
+            tile = this.bakeBlock(variant, capped);
+            this.blockTiles.set(key, tile);
+        }
+
+        this.ctx.drawImage(tile, Math.round(this.px(x)), Math.round(this.py(y)) - this.blockPad);
+    }
+
+    // Kolik místa nad blokem si dlaždice nechává. Sníh na horní hraně přečnívá
+    // nad políčko a bez místa navíc by ho okraj dlaždice uřízl.
+    get blockPad() {
+        return Math.ceil(this.tile * 0.2);
+    }
+
+    /**
+     * Strana dlaždice v pixelech: o pixel víc, než je políčko. Bloky se kreslí
+     * na celé pixely, takže rozteč sousedů kolísá mezi `floor` a `ceil` políčka –
+     * dlaždice o pixel větší tu vůli pokryje a mezi bloky nezůstane škvíra.
+     * Ze stejného důvodu se obrys rýsuje až k okraji dlaždice: kdyby končil
+     * o pixel dřív, byla by mezi rámečky sousedů občas vidět tmavá čára.
+     */
+    get blockSize() {
+        return Math.ceil(this.tile) + 1;
+    }
+
+    // Vykreslí jednu podobu bloku podle tématu do samostatného plátna
+    bakeBlock(variant, capped) {
+        const pad = this.blockPad;
+        const tile = document.createElement('canvas');
+        tile.width = this.blockSize;
+        tile.height = this.blockSize + pad;
+
+        const ctx = tile.getContext('2d');
+        ctx.translate(0, pad);          // kresba počítá s levým horním rohem políčka
+        const paint = {ice: this.paintIceBlock, desert: this.paintSandBlock,
+                       math: this.paintMathBlock}[this.level.theme] ?? this.paintPlainBlock;
+        paint.call(this, ctx, variant, capped);
+        return tile;
+    }
+
+    paintPlainBlock(ctx, variant, capped) {
         const t = this.tile;
-        const px = this.px(x);
-        const py = this.py(y);
+        const s = this.blockSize;
 
         ctx.fillStyle = `hsl(${this.hue}, 45%, 13%)`;
-        ctx.fillRect(px, py, t + 1, t + 1);
+        ctx.fillRect(0, 0, s, s);
 
         ctx.strokeStyle = `hsl(${this.hue}, 85%, 72%)`;
         ctx.lineWidth = Math.max(t * 0.07, 1.5);
-        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+        ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
 
         // Horní hrana bloku je světlejší – lépe je vidět, kam se dá doskočit
-        if (!this.level.isSolid(x, y - 1)) {
+        if (!capped) {
             ctx.fillStyle = `hsl(${this.hue}, 90%, 78%)`;
-            ctx.fillRect(px, py, t + 1, Math.max(t * 0.1, 2));
+            ctx.fillRect(0, 0, s, Math.max(t * 0.1, 2));
         }
     }
 
     /**
-     * Namrzlý blok. Kresba je stálá funkce souřadnic políčka (šum podle x, y),
-     * takže námraza při posunu kamery neposkakuje.
+     * Namrzlý blok. Námraza se počítá ze `variant` (a ta ze souřadnic políčka),
+     * takže je pro dané místo stálá a při posunu kamery neposkakuje.
      */
-    drawIceBlock(x, y) {
-        const ctx = this.ctx;
+    paintIceBlock(ctx, variant, capped) {
         const t = this.tile;
-        const px = this.px(x);
-        const py = this.py(y);
+        const s = this.blockSize;
 
-        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        const grad = ctx.createLinearGradient(0, 0, 0, t);
         grad.addColorStop(0, 'hsl(198, 50%, 29%)');
         grad.addColorStop(1, 'hsl(207, 55%, 14%)');
         ctx.fillStyle = grad;
-        ctx.fillRect(px, py, t + 1, t + 1);
+        ctx.fillRect(0, 0, s, s);
 
         // Šmouhy námrazy
         ctx.strokeStyle = 'rgba(214, 245, 255, 0.32)';
         ctx.lineWidth = Math.max(t * 0.05, 1);
         ctx.beginPath();
         for (let i = 0; i < 3; i++) {
-            const nx = noise(x * 17 + y * 5 + i * 41);
-            const ny = noise(x * 3 + y * 29 + i * 13);
-            const sx = px + t * (0.14 + nx * 0.6);
-            const sy = py + t * (0.16 + ny * 0.6);
+            const nx = noise(variant * 17 + i * 41);
+            const ny = noise(variant * 3 + i * 13);
+            const sx = t * (0.14 + nx * 0.6);
+            const sy = t * (0.16 + ny * 0.6);
             ctx.moveTo(sx, sy);
             ctx.lineTo(sx + t * 0.22, sy + t * 0.16);
         }
@@ -1237,38 +1363,36 @@ export class Game {
 
         ctx.strokeStyle = 'rgba(190, 235, 255, 0.85)';
         ctx.lineWidth = Math.max(t * 0.07, 1.5);
-        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+        ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
 
         // Na volné horní hraně leží sníh – zároveň je líp vidět, kam se doskočí
-        if (!this.level.isSolid(x, y - 1)) {
+        if (!capped) {
             ctx.fillStyle = '#eaf9ff';
-            ctx.fillRect(px, py, t + 1, Math.max(t * 0.12, 2));
+            ctx.fillRect(0, 0, s, Math.max(t * 0.12, 2));
             ctx.beginPath();
             for (let i = 0; i < 3; i++) {
-                const cx = px + t * (0.2 + i * 0.3);
-                const r = t * (0.11 + noise(x * 7 + y + i * 23) * 0.07);
-                ctx.moveTo(cx - r, py + t * 0.05);
-                ctx.arc(cx, py + t * 0.05, r, Math.PI, 0);
+                const cx = t * (0.2 + i * 0.3);
+                const r = t * (0.11 + noise(variant * 7 + i * 23) * 0.07);
+                ctx.moveTo(cx - r, t * 0.05);
+                ctx.arc(cx, t * 0.05, r, Math.PI, 0);
             }
             ctx.fill();
         }
     }
 
     /**
-     * Pískovcový blok. Vrstvy i zrno jsou stálá funkce souřadnic políčka
-     * (šum podle x, y), takže při posunu kamery neposkakují.
+     * Pískovcový blok. Vrstvy i zrno se počítají ze `variant` (a ta ze souřadnic
+     * políčka), takže jsou pro dané místo stálé a při posunu kamery neposkakují.
      */
-    drawSandBlock(x, y) {
-        const ctx = this.ctx;
+    paintSandBlock(ctx, variant, capped) {
         const t = this.tile;
-        const px = this.px(x);
-        const py = this.py(y);
+        const s = this.blockSize;
 
-        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        const grad = ctx.createLinearGradient(0, 0, 0, t);
         grad.addColorStop(0, 'hsl(33, 42%, 41%)');
         grad.addColorStop(1, 'hsl(24, 40%, 26%)');
         ctx.fillStyle = grad;
-        ctx.fillRect(px, py, t + 1, t + 1);
+        ctx.fillRect(0, 0, s, s);
 
         // Vodorovné vrstvy usazeného pískovce – jen naznačené, ať z bloku
         // nejsou prkna
@@ -1276,17 +1400,17 @@ export class Game {
         ctx.lineWidth = Math.max(t * 0.04, 1);
         ctx.beginPath();
         for (let i = 0; i < 2; i++) {
-            const ly = py + t * (0.34 + i * 0.3 + noise(x * 19 + y * 7 + i * 31) * 0.14);
-            ctx.moveTo(px, ly);
-            ctx.lineTo(px + t, ly + t * 0.05 * (noise(x * 5 + y * 23 + i) - 0.5));
+            const ly = t * (0.34 + i * 0.3 + noise(variant * 19 + i * 31) * 0.14);
+            ctx.moveTo(0, ly);
+            ctx.lineTo(t, ly + t * 0.05 * (noise(variant * 5 + i) - 0.5));
         }
         ctx.stroke();
 
         // Zrno – pár tmavších oblázků zapadlých v písku
         ctx.fillStyle = 'rgba(60, 36, 20, 0.3)';
         for (let i = 0; i < 3; i++) {
-            const gx = px + t * (0.15 + noise(x * 13 + y * 3 + i * 17) * 0.7);
-            const gy = py + t * (0.2 + noise(x * 29 + y * 11 + i * 7) * 0.65);
+            const gx = t * (0.15 + noise(variant * 13 + i * 17) * 0.7);
+            const gy = t * (0.2 + noise(variant * 29 + i * 7) * 0.65);
             ctx.fillRect(gx, gy, Math.max(t * 0.05, 1), Math.max(t * 0.04, 1));
         }
 
@@ -1294,21 +1418,21 @@ export class Game {
         // udělala bednu. Hranu, na kterou se doskakuje, stejně nese navátý písek.
         ctx.strokeStyle = 'rgba(245, 210, 155, 0.4)';
         ctx.lineWidth = Math.max(t * 0.05, 1);
-        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+        ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
 
         // Na volné horní hraně leží navátý písek – zároveň je líp vidět, kam se doskočí
-        if (!this.level.isSolid(x, y - 1)) {
+        if (!capped) {
             ctx.fillStyle = '#f2d29b';
-            ctx.fillRect(px, py, t + 1, Math.max(t * 0.11, 2));
+            ctx.fillRect(0, 0, s, Math.max(t * 0.11, 2));
             // Vlnky ve vrstvě písku, ať hrana není jako pravítko
             ctx.beginPath();
-            ctx.moveTo(px, py + t * 0.15);
+            ctx.moveTo(0, t * 0.15);
             for (let i = 0; i < 3; i++) {
-                const cx = px + t * (0.17 + i * 0.33);
-                ctx.quadraticCurveTo(cx, py + t * (0.05 + noise(x * 7 + y + i * 23) * 0.08),
-                    cx + t * 0.165, py + t * 0.15);
+                const cx = t * (0.17 + i * 0.33);
+                ctx.quadraticCurveTo(cx, t * (0.05 + noise(variant * 7 + i * 23) * 0.08),
+                    cx + t * 0.165, t * 0.15);
             }
-            ctx.lineTo(px, py + t * 0.15);
+            ctx.lineTo(0, t * 0.15);
             ctx.fill();
         }
     }
@@ -1685,31 +1809,29 @@ export class Game {
 
     /**
      * Blok matematického světa: dlaždice rozdělená na čtyři pole jako políčko
-     * rýsovacího papíru, na ní bledě narýsovaný symbol. Který to je, se losuje
-     * ze šumu podle souřadnic políčka – při posunu kamery se tedy symboly
-     * nepřeskládají a zeď zůstane pořád stejná.
+     * rýsovacího papíru, na ní bledě narýsovaný symbol. Který to je, plyne
+     * z `variant`, a ta ze souřadnic políčka – při posunu kamery se tedy
+     * symboly nepřeskládají a zeď zůstane pořád stejná.
      */
-    drawMathBlock(x, y) {
-        const ctx = this.ctx;
+    paintMathBlock(ctx, variant, capped) {
         const t = this.tile;
-        const px = this.px(x);
-        const py = this.py(y);
+        const s = this.blockSize;
         const h = this.hue;
 
-        const grad = ctx.createLinearGradient(px, py, px, py + t);
+        const grad = ctx.createLinearGradient(0, 0, 0, t);
         grad.addColorStop(0, `hsl(${h}, 42%, 17%)`);
         grad.addColorStop(1, `hsl(${h + 10}, 45%, 10%)`);
         ctx.fillStyle = grad;
-        ctx.fillRect(px, py, t + 1, t + 1);
+        ctx.fillRect(0, 0, s, s);
 
         // Vnitřní rastr dlaždice
         ctx.strokeStyle = `hsla(${h + 30}, 70%, 75%, 0.12)`;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(px + t * 0.5, py);
-        ctx.lineTo(px + t * 0.5, py + t);
-        ctx.moveTo(px, py + t * 0.5);
-        ctx.lineTo(px + t, py + t * 0.5);
+        ctx.moveTo(t * 0.5, 0);
+        ctx.lineTo(t * 0.5, t);
+        ctx.moveTo(0, t * 0.5);
+        ctx.lineTo(t, t * 0.5);
         ctx.stroke();
 
         // Symbol vyrytý do bloku – jen naznačený, ať nepřebije překážky
@@ -1717,20 +1839,19 @@ export class Game {
         ctx.lineWidth = Math.max(t * 0.045, 1);
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        mathGlyph(ctx, BLOCK_GLYPHS[Math.floor(noise(x * 13 + y * 7) * BLOCK_GLYPHS.length)],
-            px + t * 0.5, py + t * 0.5, t * 0.52);
+        mathGlyph(ctx, BLOCK_GLYPHS[variant % BLOCK_GLYPHS.length], t * 0.5, t * 0.5, t * 0.52);
         ctx.stroke();
         ctx.lineCap = 'butt';
         ctx.lineJoin = 'miter';
 
         ctx.strokeStyle = `hsl(${h + 25}, 85%, 74%)`;
         ctx.lineWidth = Math.max(t * 0.06, 1.5);
-        ctx.strokeRect(px + ctx.lineWidth / 2, py + ctx.lineWidth / 2, t - ctx.lineWidth, t - ctx.lineWidth);
+        ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, s - ctx.lineWidth, s - ctx.lineWidth);
 
         // Horní hrana bloku je světlejší – lépe je vidět, kam se dá doskočit
-        if (!this.level.isSolid(x, y - 1)) {
+        if (!capped) {
             ctx.fillStyle = `hsl(${h + 30}, 95%, 82%)`;
-            ctx.fillRect(px, py, t + 1, Math.max(t * 0.1, 2));
+            ctx.fillRect(0, 0, s, Math.max(t * 0.1, 2));
         }
     }
 
@@ -1977,7 +2098,18 @@ export class Game {
          * textu roste i s počtem pokusů a výší skóre.
          */
         const statsRight = this.c.width - pad - ICON_ZONE * switches;
-        const width = text => ctx.measureText(text).width;
+        // Šířky se pamatují: měřit každý snímek totéž je zbytečné a písmo se
+        // mění jen s velikostí okna (tam se mezipaměť zahodí).
+        const width = text => {
+            let w = this.textWidths.get(text);
+            if (w === undefined) {
+                // Texty se s pokusy a skóre mění, ať to neroste donekonečna
+                if (this.textWidths.size > 200) this.textWidths.clear();
+                w = ctx.measureText(text).width;
+                this.textWidths.set(text, w);
+            }
+            return w;
+        };
         const coins = `🪙 ${this.coins}/${this.level.coinCount}`;
         const layouts = [
             [`LEVEL ${this.levelIndex + 1}/${this.levels.length}`, `POKUS ${this.attempts} · ${coins} · ${this.score}`],
