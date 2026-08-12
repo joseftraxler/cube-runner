@@ -15,8 +15,10 @@
  *
  * **Každé téma prostředí má vlastní motiv** (`THEMES`): jinou stupnici, harmonii,
  * tempo, nástroje i rytmus. Beztémové levely drží temné synthwave, led hraje
- * pomalé zvonky nad ležícím podkladem, oheň dusá chraplavým riffem a poušť
- * zní jako mexické mariachi – guitarrón, odsekávaná kytara a trubky v terciích.
+ * pomalé zvonky nad ležícím podkladem, oheň dusá chraplavým riffem, poušť
+ * zní jako mexické mariachi – guitarrón, odsekávaná kytara a trubky v terciích –
+ * a matematický svět běží minimalisticky: metronom, skleněné tóny, souměrné
+ * stupnice a melodická buňka, která se proti taktu posouvá.
  * Dramatický ráz zůstává všude – mění se barva, ne nálada.
  *
  * V rámci tématu má každý level vlastní stupnici, harmonii i základní tón podle
@@ -51,7 +53,17 @@ const SCALE = {
     locrian: [0, 1, 3, 5, 6, 8, 10],        // lokrická – tritonus hned v základu
     blues: [0, 3, 5, 6, 7, 10],             // mollové blues se sníženou kvintou
     hijaz: [0, 1, 4, 5, 7, 8, 10],          // frygická dur – zvětšená sekunda nad základem
+    wholeTone: [0, 2, 4, 6, 8, 10],         // celotónová – souměrná, bez těžiště
+    octatonic: [0, 2, 3, 5, 6, 8, 9, 11],   // zmenšená – opakuje se po malých terciích
 };
+
+/**
+ * Mollový akord v přirozeném ladění (podíly malých celých čísel místo
+ * rovnoměrné temperace). Tóny se do sebe zamknou beze zázněje – proti
+ * temperovanému zbytku hry je to slyšet, a přesně proto zní takhle
+ * harmonie matematického světa.
+ */
+const JUST_MINOR = [1, 6 / 5, 3 / 2, 2];
 
 /**
  * Motivy podle tématu prostředí. Každý drží stupnice, harmonie, základní tóny,
@@ -145,6 +157,39 @@ const THEMES = {
         leadGain: 0.50,
         delay: {steps: 3, feedback: 0.22, mix: 0.28},   // jen náznak ozvěny kaňonu
     },
+
+    /**
+     * Matematický svět – minimalistický běh šestnáctin: metronom místo bicích,
+     * čisté sinusové tóny a melodická buňka nesoudělné délky, která se proti
+     * taktu postupně posouvá. Stupnice jsou souměrné (celotónová a zmenšená se
+     * zobrazí samy na sebe po posunu) a harmonie krouží po velkých a malých
+     * terciích a po kvintách – všechno jsou to pravidelné dělení oktávy.
+     *
+     * Pole mají pět prvků, protože matematických levelů je pět (11–15) a každý
+     * z nich má sáhnout na jinou stupnici, harmonii i základní tón.
+     * `chord` tenhle motiv nemá schválně: akord hraje `#ratioChord`
+     * v přirozeném ladění, ne v půltónech.
+     */
+    math: {
+        arrange: 'math',
+        melody: 'phase',
+        bpm: 128,
+        scales: [SCALE.wholeTone, SCALE.dorian, SCALE.octatonic, SCALE.pentatonic,
+                 SCALE.aeolian],
+        progressions: [
+            [0, 0, 4, 4, 8, 8, 4, 4],       // velké tercie – dělení oktávy na tři
+            [0, 7, 2, 9, 4, 11, 6, 1],      // kvintový kruh
+            [0, 0, 3, 3, 6, 6, 9, 9],       // malé tercie – dělení oktávy na čtyři
+            [0, 5, 10, 3, 8, 1, 6, 11],     // kvartový kruh (kvintový pozpátku)
+            [0, 0, 8, 8, 5, 5, 10, 10],
+        ],
+        roots: [0, 5, 3, 8, 10],
+        arp: [0, 7, 12, 7],
+        cutoff: [1600, 3200, 6200],
+        gain: [0.48, 0.60, 0.74],
+        leadGain: 0.52,
+        delay: {steps: 4, feedback: 0.40, mix: 0.42},   // ozvěna prázdné posluchárny
+    },
 };
 
 // Son clave 3–2 v šestnáctinách – kostra latinskoamerického rytmu
@@ -235,6 +280,20 @@ function buildMelody(style, scale, random) {
                 }
                 i += 2 + Math.floor(random() * 6);        // nádech mezi frázemi
             }
+            break;
+        }
+
+        // Matematika: krátká buňka, jejíž délka je nesoudělná s taktem (5, 7
+        // nebo 9 kroků proti šestnácti). Každým taktem se proti dobám posune
+        // o kus dál, takže se souzvuky pořád skládají jinak, i když se hraje
+        // pořád totéž – fázový posun, ne nová melodie.
+        case 'phase': {
+            const length = 5 + Math.floor(random() * 3) * 2;
+            const cell = new Array(length).fill(null);
+            for (let i = 0; i < length; i++) {
+                cell[i] = random() < 0.78 ? degreeAt(scale, Math.floor(random() * 5)) : null;
+            }
+            for (let i = 0; i < PATTERN_STEPS; i++) melody[i] = cell[i % length];
             break;
         }
 
@@ -456,6 +515,7 @@ export class Sound {
             case 'ice': this.#arrangeIce(bit); break;
             case 'fire': this.#arrangeFire(bit); break;
             case 'desert': this.#arrangeDesert(bit); break;
+            case 'math': this.#arrangeMath(bit); break;
             default: this.#arrangeSynth(bit); break;
         }
     }
@@ -630,6 +690,45 @@ export class Sound {
             if (tier >= 2) {
                 this.#trumpet(root * 4 * semitone(thirdAbove(t.scale, note)), dur, 0.07, when + 0.008);
             }
+        }
+    }
+
+    /**
+     * Matematika: minimalistický běh. Puls drží metronom (bicí by tady zněly
+     * jako z jiné hry), spodek je ležící sinusovka a melodie se proti taktu
+     * postupně posouvá, takže se souzvuky pořád přeskládávají. Harmonii shrne
+     * jednou za dva takty souzvuk v přirozeném ladění – opět jediné místo ve
+     * skladbě, kde je slyšet celý akord naráz.
+     */
+    #arrangeMath({t, root, bar, inBar, step, tier, when}) {
+        // ---- puls: měkký kopák na čtvrtky, metronom mezi nimi ----
+        if (inBar % 4 === 0) this.#kick(when, {top: 140, bottom: 50, dur: 0.14, gain: 0.5});
+        if (tier >= 1 && inBar % 2 === 1) this.#tick(when, inBar % 8 === 7);
+        if (tier >= 2 && inBar % 8 === 4) this.#snare(when, false);
+
+        // ---- spodek: ležící základ, na půlce taktu kvinta ----
+        if (inBar === 0) this.#bassSub(root, t.stepDur * 7, when);
+        if (tier >= 1 && inBar === 8) this.#bassSub(root * 1.5, t.stepDur * 6.5, when);
+
+        // ---- melodie: skleněný tón, buňka se proti taktu posouvá ----
+        const note = t.melody[step];
+        if (note !== null && (tier >= 1 || inBar % 2 === 0)) {
+            this.#glass(root * 4 * semitone(note), t.stepDur * (tier >= 1 ? 2.4 : 1.6),
+                        tier >= 1 ? 0.10 : 0.07, when);
+        }
+
+        // ---- souzvuk v přirozeném ladění: jediná plná harmonie ve skladbě ----
+        if (tier >= 1 && bar % 2 === 0 && inBar === 0) {
+            this.#ratioChord(root, t.stepDur * 5, tier >= 2 ? 0.06 : 0.045, when);
+        }
+
+        // ---- arpeggio v nejvyšším stupni: šestnáctiny přes kvintu a oktávu ----
+        if (tier >= 2) {
+            const arpNote = t.profile.arp[inBar % t.profile.arp.length];
+            this.#tone({
+                freq: root * 8 * semitone(arpNote), type: 'triangle',
+                dur: t.stepDur * 0.7, gain: 0.04, when, dest: this.musicGain,
+            });
         }
     }
 
@@ -884,6 +983,32 @@ export class Sound {
         }
     }
 
+    /**
+     * Skleněný tón matematického světa: sinus se svou kvintou a oktávou
+     * v čistých poměrech (3/2 a 2/1), měkký náběh a dlouhý dozvuk. Nemá
+     * chvění ani ostrou hranu – proto zní jako skleněná harmonika, ne jako
+     * syntezátor, a nepere se s tikáním metronomu.
+     */
+    #glass(freq, dur, gain, when) {
+        const env = this.ctx.createGain();
+
+        env.gain.setValueAtTime(0.0001, when);
+        env.gain.exponentialRampToValueAtTime(gain, when + 0.035);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        env.connect(this.leadGain);
+
+        for (const [ratio, level] of [[1, 1], [1.5, 0.28], [2, 0.16]]) {
+            const osc = this.ctx.createOscillator();
+            const mix = this.ctx.createGain();
+            mix.gain.value = level;
+            osc.type = 'sine';
+            osc.frequency.value = freq * ratio;
+            osc.connect(mix).connect(env);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        }
+    }
+
     /** Drnknutá struna (kytara): pila přes rychle se zavírající filtr. */
     #pluck(freq, dur, gain, when, dest = this.musicGain) {
         const osc = this.ctx.createOscillator();
@@ -1000,6 +1125,41 @@ export class Sound {
     }
 
     /**
+     * Souzvuk matematického světa: mollový akord laděný podíly celých čísel
+     * (`JUST_MINOR`), ne půltóny. Tóny se do sebe zamknou beze zázněje – vedle
+     * temperovaného zbytku hry to zní nezvykle čistě, skoro jako varhany.
+     * Filtr se s úderem otevře a hned zase přivírá, aby to zůstala interpunkce
+     * a ne ležící plocha.
+     */
+    #ratioChord(root, dur, gain, when) {
+        const filter = this.ctx.createBiquadFilter();
+        const env = this.ctx.createGain();
+
+        filter.type = 'lowpass';
+        filter.Q.value = 1;
+        filter.frequency.setValueAtTime(2800, when);
+        filter.frequency.exponentialRampToValueAtTime(700, when + dur);
+
+        env.gain.setValueAtTime(0.0001, when);
+        env.gain.exponentialRampToValueAtTime(gain, when + 0.05);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+
+        filter.connect(env).connect(this.musicGain);
+
+        JUST_MINOR.forEach((ratio, i) => {
+            const osc = this.ctx.createOscillator();
+            const mix = this.ctx.createGain();
+            // Vyšší tóny akordu tišeji, ať souzvuk drží tvar
+            mix.gain.value = 1 / (1 + i * 0.6);
+            osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+            osc.frequency.value = root * 2 * ratio;
+            osc.connect(mix).connect(filter);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        });
+    }
+
+    /**
      * Kytarové drnknutí: tóny akordu těsně za sebou, jak je palec přejede.
      * `shape` je akord (mollový nebo durový podle harmonie), `spread` rozestup
      * strun – čím kratší, tím ostřejší přiťuknutí.
@@ -1067,6 +1227,16 @@ export class Sound {
     #crackle(when) {
         this.#noise({dur: 0.07, gain: 0.1, when, type: 'bandpass',
                      freq: 1800, q: 4, dest: this.musicGain});
+    }
+
+    /**
+     * Metronom místo hi-hat: cvaknutí odměřující puls, na konci taktu vyšší.
+     * Krátké schválně – delší zvuk by z něj udělal nástroj, a on má být měřítko.
+     */
+    #tick(when, accent) {
+        this.#tone({freq: accent ? 3200 : 2500, type: 'sine', dur: 0.02,
+                    gain: accent ? 0.1 : 0.06, when, dest: this.musicGain});
+        this.#noise({dur: 0.012, gain: 0.05, when, freq: 6500, dest: this.musicGain});
     }
 
     /** Claves: suché dřevěné ťuknutí, které drží clave rytmus. */

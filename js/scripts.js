@@ -9,6 +9,11 @@ import {level7} from "./levels/level7.js";
 import {level8} from "./levels/level8.js";
 import {level9} from "./levels/level9.js";
 import {level10} from "./levels/level10.js";
+import {level11} from "./levels/level11.js";
+import {level12} from "./levels/level12.js";
+import {level13} from "./levels/level13.js";
+import {level14} from "./levels/level14.js";
+import {level15} from "./levels/level15.js";
 
 const canvas = document.getElementsByTagName('canvas')[0];
 
@@ -23,6 +28,12 @@ const levels = [
     level8,
     level9,
     level10,
+    // Matematický svět – druhá půlka hry, o stupeň těžší
+    level11,
+    level12,
+    level13,
+    level14,
+    level15,
 ];
 
 const controls = {

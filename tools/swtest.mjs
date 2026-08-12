@@ -85,6 +85,9 @@ try {
     // Offline musí hra pořád fungovat z cache
     await page.reload();
     await page.waitForFunction(() => !!window.cubeRunner);
+    // Kolik levelů má hra online – offline jich musí naskočit stejně. Čte se
+    // ze hry, aby test nepadal pokaždé, když levelů přibude.
+    const expected = await page.evaluate(() => window.cubeRunner.levels.length);
     await context.setOffline(true);
     const errors = [];
     page.on('pageerror', e => errors.push(String(e)));
@@ -94,8 +97,9 @@ try {
         await page.waitForFunction(() => !!window.cubeRunner, null, {timeout: 10000});
         levels = await page.evaluate(() => window.cubeRunner.levels.length);
     } catch { /* níž se to projeví jako chyba */ }
-    check(levels === 10 && errors.length === 0,
-        `offline reload načetl všech 10 levelů${errors.length ? ' – chyby: ' + errors.join('; ') : ''}`);
+    check(levels === expected && errors.length === 0,
+        `offline reload načetl všech ${expected} levelů (načteno ${levels})`
+        + (errors.length ? ' – chyby: ' + errors.join('; ') : ''));
 
     // Na stejné doméně můžou běžet i jiné appky – jejich cache nám nepatří
     await context.setOffline(false);
