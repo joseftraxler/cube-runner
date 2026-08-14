@@ -23,6 +23,7 @@ python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely dob�
 node tools/playtest.mjs               # projde všech 20 levelů v Chromiu
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
+node tools/mixtest.mjs                # porovná hlasitost hudby mezi tématy
 node tools/perftest.mjs               # změří cenu snímku v každém tématu
 ```
 
@@ -289,17 +290,29 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
   basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, odsekávaná
   kytara, trubky v terciích, claves a palmas), `math` minimalistický běh
-  (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` dřevo a kůži
-  (bubny v tresillu 3–3–2, marimbové ostinato zaklesnuté do nich, chřestidlo
-  a dřevěná píšťala). Nástroje jsou sdílené
+  (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
+  bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
+  Nástroje jsou sdílené
   stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#pluck`, `#guitarron`,
-  `#glass`, `#woodBar`, `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují
-  jen o tom, co kdy zazní.
-- **Džungli drží rytmus, ne harmonie.** Tresillo 3–3–2 (`TRESILLO`) hrají bubny,
-  basa i melodické ostinato, takže do sebe zapadají, a harmonie se za celou
-  smyčku skoro nehne. Marimba (`#woodBar`) zní kromě základního tónu i čtvrtou
-  harmonickou – přesně na ni se desky marimby vybrušují a bez ní je z toho
-  zvonkohra. Když sem saháš, drž rytmus a nepodkládej melodii akordy.
+  `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`, `#flute`…), aranžmá
+  (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
+- **Džungli drží rytmus, ne harmonie, a hraje ji celý bubnový kruh.** Zvonovou
+  linku 3–3–2 (`BELL`) drží kovový zvonec `#gankogui` a opírá se o ni basa
+  i balafonové ostinato; **djembe (`#djembe`) ale hrají do mezer mezi jejími
+  údery** – teprve z toho vznikne prokládaná polyrytmika, kvůli které to zní
+  jako víc bubeníků, a ne jako jeden rytmus posílený nástroji. Kdyby bubny
+  padaly na doby zvonce, sesype se to zpátky do pochodu. Zvonec musí zůstat
+  slyšet **nad** bubny (v kruhu drží linku on) a balafon (`#woodBar`) zní kromě
+  základního tónu i čtvrtou harmonickou a k tomu brní mirlitony na rezonátorech –
+  bez nich je z toho koncertní marimba. Harmonie se za celou smyčku skoro nehne;
+  celý akord zazní jen ve sboru hlasů (`#chantChord`), kterému o dva takty
+  později odpoví píšťala. Když sem saháš, drž rytmus a nepodkládej melodii akordy.
+- **Hlasitost motivů se hlídá měřením, ne odhadem.** Motivy se skládají z jiných
+  nástrojů, takže se jejich hlasitosti samy od sebe rozejdou a řídké téma pak
+  působí jako chyba (přesně tohle se stalo první verzi džungle). `node
+  tools/mixtest.mjs` změří RMS i špičku každého tématu a spadne, když je mezi
+  nejhlasitějším a nejtišším víc než 6 dB. Špičku drž bezpečně pod jedničkou –
+  přes hudbu hrají ještě efekty a nad nimi už žádná rezerva není.
 - **Matematické téma je matematické i uvnitř, ne jen názvem.** Stupnice jsou
   souměrné (celotónová a zmenšená se posunem zobrazí samy na sebe), harmonie
   krouží po pravidelných děleních oktávy (velké a malé tercie, kvinty), melodie
@@ -314,7 +327,7 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   saháš, drž vibrato až na druhou půlku tónu a filtr veď obálkou – jinak se
   ta harmonika vrátí.
 - Akord je v každém tématu jiný (`#stab`, `#swell`, `#powerStab`, `#strum`,
-  `#ratioChord`), ale všude je to **jediné místo, kde zazní celá harmonie
+  `#ratioChord`, `#chantChord`), ale všude je to **jediné místo, kde zazní celá harmonie
   naráz** – basa drží jen
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší

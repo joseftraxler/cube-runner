@@ -99,7 +99,7 @@ barvy, ale i nástroje a styl:
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
 | poušť            | mexické mariachi – guitarrón, odsekávaná kytara, trubky v terciích      |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
-| džungle          | dřevo a kůže – bubny v tresillu 3–3–2, marimbové ostinato, dřevěná píšťala |
+| džungle          | africký bubnový kruh – kovový zvonec, djembe, chřestidlo, balafon a sbor hlasů |
 
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
 podklad s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
@@ -179,6 +179,7 @@ tools/
 ├── playtest.mjs        automatické projití všech levelů v prohlížeči
 ├── swtest.mjs          test service workeru (offline vs. aktuálnost souborů)
 ├── audiotest.mjs       test zvuku (měří signál na výstupu hry)
+├── mixtest.mjs         porovnání hlasitosti hudby mezi tématy
 ├── perftest.mjs        měření ceny snímku v jednotlivých tématech
 └── screenshot.mjs      náhled hry do README
 ```
@@ -279,6 +280,7 @@ v opravdovém prohlížeči a vyrobit náhled:
 node tools/playtest.mjs               # projde všech 20 levelů skutečným kódem hry
 node tools/swtest.mjs                 # ověří chování service workeru (offline vs. aktuálnost)
 node tools/audiotest.mjs              # ověří, že z hry opravdu leze zvuk
+node tools/mixtest.mjs                # porovná hlasitost hudby mezi tématy
 node tools/perftest.mjs               # změří, kolik stojí snímek v každém tématu
 node tools/screenshot.mjs             # přegeneruje docs/preview.png
 ```
