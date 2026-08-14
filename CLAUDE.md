@@ -20,7 +20,7 @@ levelů se má pustit**:
 
 ```bash
 python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely doběhnout
-node tools/playtest.mjs               # projde všech 15 levelů v Chromiu
+node tools/playtest.mjs               # projde všech 20 levelů v Chromiu
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
 node tools/perftest.mjs               # změří cenu snímku v každém tématu
@@ -164,7 +164,12 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   téma `'math'` mění hroty v operátory Δ (ze země) a ∇ (ze stropu), bloky
   v dlaždice rýsovacího papíru se symbolem, minci v ražbu s π, prstenec
   v křivkový integrál (∮ – obíhající šipka ukazuje orientaci) a do pozadí dá
-  rýsovací papír s geometrickými obrazci a vztahy mezi nimi.
+  rýsovací papír s geometrickými obrazci a vztahy mezi nimi, téma `'jungle'`
+  staví místo hrotů ze země masožravé rostliny, místo hrotů ze stropu hady
+  na liánách, bloky mění v zarostlé chrámové kvádry (mech na volné horní hraně)
+  a do pozadí dá koruny stromů s pruhy světla, kmeny v mlze, houpající se liány
+  a světlušky. Rudá tlama a jantarové pruhy jsou v zeleném prostředí schválně:
+  zelená rostlina by splynula s pozadím a nebylo by poznat, co zabíjí.
   Téma navíc určuje **motiv hudby** (`THEMES` v `audio.js`) – na fyziku ani
   hitboxy ale nesahá. Drží je `LEVEL_THEMES` v generátoru.
 
@@ -196,7 +201,7 @@ Všechny úseky mají pevnou geometrii: přesně `HEIGHT` (14) řádků, podlaha
 `GROUND_ROW` (12), v zápisu se místo mezery píše `.` (funkce `pattern` to převede).
 Vizuální téma se levelu přiřadí v `LEVEL_THEMES` podle jeho čísla.
 
-**Levely 11–15 (matematický svět) jsou druhá půlka hry a o stupeň těžší** – běží
+**Levely 11–15 (matematický svět) jsou prostřední třetina hry a o stupeň těžší** – běží
 na 160–185 % a stojí na vlastních úsecích, kde už nestačí jedna překážka:
 `ringspan` a `padring` mají propast, přes kterou se dostaneš jen prstencem
 (a `padring` až kombinací odrazové plošiny a prstence), `ringtrap` nad prstenec
@@ -209,6 +214,21 @@ Protože **délka skoku roste s rychlostí levelu** (~8,3 políčka na 160 %, ~9
 185 %), tyhle úseky nejdou bez ověření přesadit do pomalejšího levelu – rozteče
 by přestaly sedět. Fáze koulí na řetězu (`pendulum`) navíc závisí na tom, kde
 v levelu úsek leží, takže se ověřuje **na svém místě v plánu**, ne zvlášť.
+
+**Levely 16–20 (džungle) jsou poslední třetina a běží na 190–210 %.** Tam už je
+skok dlouhý přes deset políček, takže hustotou překážek se obtížnost dělat nedá –
+jedním obloukem by se přeskákaly. Tyhle úseky proto stojí na něčem jiném:
+`canopy` a `treehop` na doskocích do korun (pod plošinami jsou trny, takže spodem
+cesta nevede), `lilypads` a `stiltpath` mají rozteč ostrůvků sladěnou s délkou
+skoku, `trapfloor` nechá strop uříznout vrchol oblouku zrovna nad dírami,
+`idolgap` nutí doskočit na vyvýšenou římsu, `templegate` otevře jen odrazová
+plošina (zeď je tři políčka vysoká), `ringroots` prodlouží skok prstencem přes
+čtyřpolíčkovou stěnu a `jungleheart` spojí plošinu i prstenec – každé zvlášť
+skončí v rokli (ověřeno tak, že se to druhé z mapy vyškrtne).
+`snakerun` je jediný úsek postavený na hustotě: hadi visí přesně ve výšce vrcholu
+skoku, takže odraz musí padnout tak, aby se vrchol trefil do mezery mezi ně.
+Rozteče jsou počítané na rychlost svého levelu, takže **přesazení jinam se musí
+ověřit** – na 210 % je skok o políčko delší než na 190 %.
 
 Ručně upravenou mapu ale generátor **nepřepíše**: v hlavičce každého souboru je
 otisk mapy a když nesedí na obsah, soubor se přeskočí (`--force` to vynutí).
@@ -225,7 +245,7 @@ kombinaci a u levelu s několika prstenci se ověření protáhne z desítek sek
 na minuty.
 
 `tools/playtest.mjs` totéž ověří proti opravdovému kódu hry: nechá si od generátoru
-spočítat čísla snímků, ve kterých se má skočit (`--paths`), a odehraje všech 15 levelů
+spočítat čísla snímků, ve kterých se má skočit (`--paths`), a odehraje všech 20 levelů
 v Chromiu. Čísla snímků se počítají **z hotových souborů v `js/levels/`**, ne z plánu,
 takže playtest sedí i na ručně upravené mapy. Ze stejného zdroje si bere skoky
 i `tools/screenshot.mjs`, když přetáčí level na místo pro náhled.
@@ -257,9 +277,17 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
   basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, odsekávaná
   kytara, trubky v terciích, claves a palmas), `math` minimalistický běh
-  (metronom, skleněné tóny, souzvuk v přirozeném ladění). Nástroje jsou sdílené
+  (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` dřevo a kůži
+  (bubny v tresillu 3–3–2, marimbové ostinato zaklesnuté do nich, chřestidlo
+  a dřevěná píšťala). Nástroje jsou sdílené
   stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#pluck`, `#guitarron`,
-  `#glass`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
+  `#glass`, `#woodBar`, `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují
+  jen o tom, co kdy zazní.
+- **Džungli drží rytmus, ne harmonie.** Tresillo 3–3–2 (`TRESILLO`) hrají bubny,
+  basa i melodické ostinato, takže do sebe zapadají, a harmonie se za celou
+  smyčku skoro nehne. Marimba (`#woodBar`) zní kromě základního tónu i čtvrtou
+  harmonickou – přesně na ni se desky marimby vybrušují a bez ní je z toho
+  zvonkohra. Když sem saháš, drž rytmus a nepodkládej melodii akordy.
 - **Matematické téma je matematické i uvnitř, ne jen názvem.** Stupnice jsou
   souměrné (celotónová a zmenšená se posunem zobrazí samy na sebe), harmonie
   krouží po pravidelných děleních oktávy (velké a malé tercie, kvinty), melodie
@@ -288,8 +316,8 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - `setTrack(levelIndex, speedPct, theme)` vybere motiv podle tématu a z čísla
   levelu v něm odvodí stupnici, harmonii i základní tón – proto mají pole motivu
   tolik prvků, kolik má téma levelů: čtyři u `ice`/`fire`/`desert` (3 a 6, 8 a 10)
-  a **pět u `math`**, protože matematických levelů je pět (11–15) a jinak by dva
-  z nich sáhly na totéž.
+  a **pět u `math` i `jungle`**, protože v obou těch světech je levelů pět
+  (11–15 a 16–20) a jinak by dva z nich sáhly na totéž.
   Melodii složí z generátoru náhodných čísel nasazeného na index levelu, takže
   každý level zní jinak, ale pokaždé stejně. Tempo se počítá z rychlosti levelu,
   takže rychlejší kolo hraje rychleji.
@@ -344,17 +372,18 @@ Tři pravidla, na kterých v `sw.js` záleží (všechna hlídá `node tools/swt
   (třeba GitHub Pages) běží i jiné appky a jejich cache nám nepatří.
 
 **Když přidáš/přejmenuješ soubor** (modul, level, asset), přidej ho do `ASSETS`
-**a zvyš verzi** `CACHE` (`cube-runner-vN`) – jinak bude offline chybět. Levely 1–15
+**a zvyš verzi** `CACHE` (`cube-runner-vN`) – jinak bude offline chybět. Levely 1–20
 se v `ASSETS` generují smyčkou; jiný počet uprav.
 
 ## Náhled do README
 
 `docs/preview.png` (obrázek v README) vyrábí `node tools/screenshot.mjs` – je to
 skutečný snímek hry z Chromia. Po vizuální změně vykreslování ho přegeneruj.
-Druhý obrázek `docs/math.png` ukazuje matematický svět a vzniká stejně:
+Další dva obrázky ukazují matematický svět a džungli a vznikají stejně:
 
 ```bash
 node tools/screenshot.mjs --level 11 --x 62 --out docs/math.png
+node tools/screenshot.mjs --level 16 --x 30 --out docs/jungle.png
 ```
 
 ## Konvence
