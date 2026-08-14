@@ -18,8 +18,9 @@
  * pomalé zvonky nad ležícím podkladem, oheň dusá chraplavým riffem, poušť
  * zní jako mexické mariachi – guitarrón, odsekávaná kytara a trubky v terciích –,
  * matematický svět běží minimalisticky (metronom, skleněné tóny, souměrné
- * stupnice a melodická buňka, která se proti taktu posouvá) a džungle stojí
- * na dřevě a kůži: bubny v tresillu 3–3–2, marimbové ostinato a dřevěná píšťala.
+ * stupnice a melodická buňka, která se proti taktu posouvá) a džungle je africký
+ * bubnový kruh: kovový zvonec drží linku, djembe hrají do jejích mezer, balafon
+ * na to skládá ostinato a nad vším zpívá sbor hlasů.
  * Dramatický ráz zůstává všude – mění se barva, ne nálada.
  *
  * V rámci tématu má každý level vlastní stupnici, harmonii i základní tón podle
@@ -193,18 +194,20 @@ const THEMES = {
     },
 
     /**
-     * Džungle – dřevo a kůže: bubny v rozdělení 3–3–2 (tresillo), marimbové
-     * ostinato zaklesnuté do nich, chřestidlo místo hi-hat a nad tím dřevěná
-     * píšťala. Harmonie skoro nikam nejde (modální kolébání mezi základem
-     * a septimou) – tady drží tah rytmus, ne akordy, a proto se i basa opírá
-     * o tytéž tři doby jako bubny.
+     * Džungle – bubnový kruh: dvouzvučný zvonec drží zvonovou linku, do jejích
+     * mezer se zaklesnou djembe (tři různé údery) a chřestidlo, balafon na to
+     * hraje ostinato a nad vším zpívá sbor hlasů, kterému odpovídá píšťala.
      *
-     * Pole mají pět prvků, protože džunglových levelů je pět (16–20).
+     * Harmonie se skoro nehne (modální kolébání mezi základem a septimou) –
+     * tah drží rytmus, ne akordy, a proto se i basa opírá o doby zvonce.
+     *
+     * Pole mají pět prvků, ať se pět džunglových levelů netrefí do stejného
+     * motivu (hlídá `check_theme_variety()` v generátoru).
      */
     jungle: {
         arrange: 'jungle',
         melody: 'ostinato',
-        bpm: 104,
+        bpm: 100,
         scales: [SCALE.pentatonic, SCALE.dorian, SCALE.kumoi, SCALE.aeolian,
                  SCALE.blues],
         progressions: [
@@ -215,17 +218,24 @@ const THEMES = {
             [0, 7, 10, 7, 0, 7, 3, 3],
         ],
         roots: [0, 5, 3, 10, 7],
-        chord: [0, 3, 7, 12],       // mollový akord pro rozložený úder marimby
+        chord: [0, 3, 7, 12],       // mollový akord pro sbor hlasů
         arp: [0, 5, 7, 12],
-        cutoff: [1500, 3000, 5600],
-        gain: [0.48, 0.60, 0.74],
-        leadGain: 0.50,
-        delay: {steps: 3, feedback: 0.30, mix: 0.34},   // ozvěna mezi kmeny
+        cutoff: [1700, 3400, 6400], // slapy a chřestidlo potřebují výšky
+        // Bubnový kruh musí znít plně, ne uctivě – proto o kus hlasitěji než
+        // řídké motivy (odchylku hlídá `tools/mixtest.mjs`)
+        gain: [0.50, 0.62, 0.74],
+        leadGain: 0.54,
+        delay: {steps: 3, feedback: 0.24, mix: 0.24},   // ozvěna mezi kmeny, ne mlha
     },
 };
 
-// Tresillo 3–3–2 v šestnáctinách – kostra celého džunglového rytmu
-const TRESILLO = [0, 3, 6, 8, 11, 14];
+/**
+ * Zvonová linka západoafrických bubnových kruhů převedená do šestnáctin –
+ * seskupení 3–3–2, na kterém stojí celý džunglový rytmus. Hraje ji gankogui
+ * (dvouzvučný zvonec) a opírá se o ni basa i balafonové ostinato; djembe
+ * naopak hrají do mezer mezi ní, a z toho vzniká prokládaná polyrytmika.
+ */
+const BELL = [0, 3, 6, 8, 11, 14];
 
 // Son clave 3–2 v šestnáctinách – kostra latinskoamerického rytmu
 const CLAVE = [0, 3, 6, 10, 12];
@@ -336,10 +346,10 @@ function buildMelody(style, scale, random) {
         // takže melodie a bicí drží stejnou kostru; každý čtvrtý takt se buňka
         // zvedne o oktávu, aby smyčka nebyla jen opakování dokola.
         case 'ostinato': {
-            const cell = TRESILLO.map(() => degreeAt(scale, Math.floor(random() * 5)));
+            const cell = BELL.map(() => degreeAt(scale, Math.floor(random() * 5)));
             for (let bar = 0; bar < BARS; bar++) {
-                TRESILLO.forEach((hit, k) => {
-                    const lift = bar % 4 === 3 && k >= TRESILLO.length - 2 ? 12 : 0;
+                BELL.forEach((hit, k) => {
+                    const lift = bar % 4 === 3 && k >= BELL.length - 2 ? 12 : 0;
                     melody[bar * STEPS_PER_BAR + hit] = cell[k] + lift;
                 });
             }
@@ -783,40 +793,62 @@ export class Sound {
     }
 
     /**
-     * Džungle: všechno visí na tresillu 3–3–2. Dřevěné bubny ho drží, marimba
-     * do nich zaklesne ostinato a chřestidlo vyplní zbytek šestnáctin. Basa
-     * nedrží ležící tón jako jinde, ale hraje tytéž tři doby jako bubny –
-     * z toho je ten tah dopředu. Harmonii shrne jednou za dva takty rozložený
-     * úder marimby a v nejvyšším stupni se nad tím rozezpívá píšťala.
+     * Džungle: bubnový kruh. Kostrou je zvonová linka `BELL` – hraje ji
+     * dvouzvučný zvonec (gankogui) a opírá se o ni basa i balafonové ostinato.
+     * Djembe naproti tomu hrají **do mezer mezi jejími údery**; teprve tím
+     * vznikne prokládaná polyrytmika, kvůli které to zní jako víc bubeníků,
+     * a ne jako jeden rytmus posílený nástroji.
+     *
+     * Nahoře je volání a odpověď: sbor hlasů zazpívá harmonii, o dva takty
+     * později mu odpoví píšťala. Bicích je tu schválně hodně vrstev – šamanská
+     * hudba stojí na hustotě úderů, ne na akordech.
      */
     #arrangeJungle({t, root, bar, inBar, step, tier, when}) {
-        // ---- bubny: kožený spodek na tresillu, dřevo na jeho odsazené doby ----
-        if (inBar === 0 || inBar === 6) this.#kick(when, {top: 160, bottom: 46, dur: 0.18, gain: 0.6});
-        if (tier >= 1 && (inBar === 3 || inBar === 11)) this.#logDrum(when, false);
-        if (tier >= 1 && (inBar === 8 || inBar === 14)) this.#logDrum(when, true);
-        if (tier >= 1 && inBar % 2 === 1) this.#shaker(when, tier >= 2 && inBar === 15);
+        // ---- dundun: hluboký buben na těžké doby ----
+        if (inBar === 0 || inBar === 8) {
+            this.#kick(when, {top: 150, bottom: 44, dur: 0.24, gain: 0.58});
+        }
+        if (tier >= 2 && inBar === 14) {
+            this.#kick(when, {top: 140, bottom: 44, dur: 0.16, gain: 0.52});
+        }
 
-        // ---- basa: tytéž doby jako bubny, ne ležící tón ----
-        if (TRESILLO.includes(inBar) && (tier >= 1 || inBar % 8 === 0)) {
+        // ---- gankogui: nižší zvon na těžké doby linky, vyšší na zbytek ----
+        if (tier >= 1 && BELL.includes(inBar)) {
+            this.#gankogui(when, inBar !== 0 && inBar !== 8);
+        }
+
+        // ---- djembe: údery mezi doby zvonce (proto ta čísla nejsou v BELL) ----
+        if (inBar === 0 || inBar === 10) this.#djembe(when, 'bass');
+        if (tier >= 1 && (inBar === 4 || inBar === 12)) this.#djembe(when, 'tone');
+        if (tier >= 1 && (inBar === 7 || inBar === 15)) this.#djembe(when, 'slap');
+        if (tier >= 2 && (inBar === 2 || inBar === 5 || inBar === 13)) {
+            this.#djembe(when, inBar === 5 ? 'slap' : 'tone');
+        }
+
+        // ---- chřestidlo: šestnáctinový podklad, na konci taktu otevřené ----
+        if (tier >= 1 && inBar % 2 === 1) this.#shekere(when, inBar === 15);
+
+        // ---- basa: doby zvonce, ne ležící tón – z toho je ten tah dopředu ----
+        if (BELL.includes(inBar) && (tier >= 1 || inBar % 8 === 0)) {
             this.#bassSub(root, t.stepDur * (inBar === 6 ? 2 : 2.6), when);
         }
 
-        // ---- marimba: ostinato zaklesnuté do bubnů ----
+        // ---- balafon: ostinato zaklesnuté do bubnů ----
         const note = t.melody[step];
         if (note !== null && (tier >= 1 || bar % 2 === 0)) {
             this.#woodBar(root * 4 * semitone(note), t.stepDur * 2.2,
-                          tier >= 1 ? 0.12 : 0.08, when, this.leadGain);
+                          tier >= 1 ? 0.13 : 0.09, when, this.leadGain);
         }
 
-        // ---- rozložený úder marimby: jediná plná harmonie ve skladbě ----
+        // ---- sbor hlasů: jediné místo, kde zazní celá harmonie naráz ----
         if (tier >= 1 && bar % 2 === 0 && inBar === 0) {
-            this.#marimbaRoll(root, t.stepDur * 3, tier >= 2 ? 0.075 : 0.055, when);
+            this.#chantChord(root, t.stepDur * 7, tier >= 2 ? 0.075 : 0.055, when);
         }
 
-        // ---- píšťala až v nejvyšším stupni: dlouhý tón proti sekaným bubnům ----
-        if (tier >= 2 && inBar === 8 && bar % 2 === 1) {
-            this.#flute(root * 4 * semitone(degreeAt(t.scale, bar % 3 === 0 ? 4 : 2)),
-                        t.stepDur * 7, 0.075, when);
+        // ---- odpověď píšťaly na volání sboru (až v nejvyšším stupni) ----
+        if (tier >= 2 && bar % 2 === 1 && inBar === 8) {
+            this.#flute(root * 4 * semitone(degreeAt(t.scale, bar % 4 === 1 ? 4 : 2)),
+                        t.stepDur * 6, 0.08, when);
         }
     }
 
@@ -1098,10 +1130,14 @@ export class Sound {
     }
 
     /**
-     * Marimbová deska. Kromě základního tónu zní i čtvrtá harmonická, tedy tón
-     * o dvě oktávy výš – přesně na ni se desky marimby vybrušují a právě podle
-     * ní je marimba slyšet. Vyšší složky hned opadnou, takže z nich zbude jen
-     * dřevěné ťuknutí paličky a dál doznívá čistý tón.
+     * Balafon (africký předchůdce marimby). Kromě základního tónu zní i čtvrtá
+     * harmonická, tedy tón o dvě oktávy výš – přesně na ni se dřevěné desky
+     * vybrušují a právě podle ní je nástroj slyšet. Vyšší složky hned opadnou,
+     * takže z nich zbude jen ťuknutí paličky a dál doznívá čistý tón.
+     *
+     * Na rezonátorech z tykví jsou navíc napnuté blány (mirlitony), které
+     * k tónu přidávají brnění – bez něj by z toho byla koncertní marimba,
+     * ne nástroj z bubnového kruhu.
      */
     #woodBar(freq, dur, gain, when, dest = this.musicGain) {
         const env = this.ctx.createGain();
@@ -1122,6 +1158,10 @@ export class Sound {
             osc.start(when);
             osc.stop(when + dur + 0.02);
         }
+
+        // Brnění mirlitonů – krátké a tiché, jinak přebije samotný tón
+        this.#noise({dur: Math.min(dur * 0.45, 0.12), gain: gain * 0.3, when,
+                     type: 'bandpass', freq: Math.min(freq * 3, 6000), q: 6, dest});
     }
 
     /**
@@ -1328,14 +1368,67 @@ export class Sound {
     }
 
     /**
-     * Rozložený úder marimby: tóny akordu těsně za sebou, jak palička přejede
-     * po deskách. Stejně jako jinde je to jediné místo, kde zazní celá harmonie
-     * naráz – basa drží jen základ a ostinato je jednohlas.
+     * Lidský hlas. Dvě rozladěné pily vede trojice pásmových propustí naladěná
+     * na formanty samohlásky „á“ (700, 1150 a 2600 Hz) – právě formanty dělají
+     * z tónu hlas, bez nich by ze sboru byla obyčejná plocha. Tón se nabírá
+     * krátkým náběhem zdola a vibrato nastupuje až ve druhé půlce; kdyby drželo
+     * od začátku, zněla by z toho siréna.
      */
-    #marimbaRoll(root, dur, gain, when) {
+    #chant(freq, dur, gain, when, dest = this.musicGain) {
+        const env = this.ctx.createGain();
+        env.gain.setValueAtTime(0.0001, when);
+        env.gain.exponentialRampToValueAtTime(gain, when + 0.1);
+        env.gain.setValueAtTime(gain, when + dur * 0.6);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        env.connect(dest);
+
+        // Společný zdroj obou pil, ze kterého si formanty berou svoje pásma
+        const source = this.ctx.createGain();
+        source.gain.value = 0.5;
+        for (const [freqHz, q, level] of [[700, 8, 1], [1150, 10, 0.5], [2600, 12, 0.2]]) {
+            const formant = this.ctx.createBiquadFilter();
+            const mix = this.ctx.createGain();
+            formant.type = 'bandpass';
+            formant.frequency.value = freqHz;
+            formant.Q.value = q;
+            mix.gain.value = level;
+            source.connect(formant).connect(mix).connect(env);
+        }
+
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.value = 5;
+        lfoGain.gain.setValueAtTime(0, when);
+        lfoGain.gain.setValueAtTime(0, when + dur * 0.5);
+        lfoGain.gain.linearRampToValueAtTime(16, when + dur);    // vibrato v centech
+        lfo.connect(lfoGain);
+        lfo.start(when);
+        lfo.stop(when + dur + 0.02);
+
+        // Dva zpěváci nikdy nezazpívají úplně stejný tón – z toho je ta šířka
+        for (const detune of [-7, 8]) {
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq * 0.94, when);
+            osc.frequency.exponentialRampToValueAtTime(freq, when + 0.08);
+            osc.detune.value = detune;
+            lfoGain.connect(osc.detune);
+            osc.connect(source);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        }
+    }
+
+    /**
+     * Sbor: hlasy nasadí krátce po sobě, jak se lidi v kruhu přidávají. Je to
+     * jediné místo ve skladbě, kde zazní celá harmonie naráz – basa drží jen
+     * základ a balafonové ostinato je jednohlas.
+     */
+    #chantChord(root, dur, gain, when) {
         this.track.profile.chord.forEach((note, i) => {
-            this.#woodBar(root * 2 * semitone(note), dur, gain * (1 - i * 0.12),
-                          when + i * 0.028, this.musicGain);
+            this.#chant(root * 2 * semitone(note), dur - i * 0.06,
+                        gain * (1 - i * 0.15), when + i * 0.06);
         });
     }
 
@@ -1433,21 +1526,61 @@ export class Sound {
     }
 
     /**
-     * Dřevěný buben: krátký pád tónu s tvrdým nasazením. Dvě výšky – v tresillu
-     * je díky nim slyšet, které doby jsou ty odsazené.
+     * Gankogui: kovaný dvouzvučný zvonec, kterým se v bubnovém kruhu udává
+     * linka. Kov nezní v harmonické řadě, proto jsou složky v nenásobných
+     * poměrech – a rychle opadnou, protože zvonec má cinknout, ne zpívat.
      */
-    #logDrum(when, high) {
-        const freq = high ? 430 : 300;
-        this.#tone({freq, freqTo: freq * 0.72, type: 'triangle', dur: 0.09,
-                    gain: high ? 0.16 : 0.2, when, dest: this.musicGain});
-        this.#noise({dur: 0.03, gain: 0.07, when, type: 'bandpass',
-                     freq: high ? 2600 : 1800, q: 3, dest: this.musicGain});
+    #gankogui(when, high) {
+        const base = high ? 760 : 500;
+        const dur = high ? 0.13 : 0.2;
+        const env = this.ctx.createGain();
+
+        env.gain.setValueAtTime(0.0001, when);
+        // Zvonec musí prořezat bubny – v kruhu je to on, kdo drží linku
+        env.gain.exponentialRampToValueAtTime(high ? 0.17 : 0.21, when + 0.004);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        env.connect(this.musicGain);
+
+        for (const [ratio, level] of [[1, 1], [2.41, 0.45], [3.83, 0.22]]) {
+            const osc = this.ctx.createOscillator();
+            const mix = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = base * ratio;
+            mix.gain.value = level;
+            osc.connect(mix).connect(env);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        }
+
+        // Úder paličky – bez něj zvonec nezačíná, jen se objeví
+        this.#noise({dur: 0.012, gain: 0.045, when, freq: 5000, dest: this.musicGain});
     }
 
-    /** Chřestidlo ze semínek místo hi-hat, na konci taktu otevřenější. */
-    #shaker(when, long) {
-        this.#noise({dur: long ? 0.12 : 0.035, gain: long ? 0.06 : 0.045,
-                     when, freq: 6200, dest: this.musicGain});
+    /**
+     * Djembe: jedna blána a tři různé údery. Basa je dutá rána do středu,
+     * tón úder na okraj (výš a kratší) a slap plácnutí prsty – skoro jen šum.
+     * Aby kruh zněl jako víc bubeníků, musí být slyšet rozdíl mezi údery,
+     * ne jenom jejich hlasitost.
+     */
+    #djembe(when, kind) {
+        const {top, bottom, dur, gain, hiss, band, q} = {
+            bass: {top: 210, bottom: 86, dur: 0.3, gain: 0.36, hiss: 0.09, band: 320, q: 1},
+            tone: {top: 340, bottom: 195, dur: 0.15, gain: 0.32, hiss: 0.1, band: 1200, q: 1.5},
+            slap: {top: 640, bottom: 400, dur: 0.05, gain: 0.13, hiss: 0.2, band: 3400, q: 1.2},
+        }[kind];
+
+        this.#tone({freq: top, freqTo: bottom, type: 'sine', dur, gain, when,
+                    dest: this.musicGain});
+        this.#noise({dur: kind === 'slap' ? 0.06 : 0.045, gain: hiss, when,
+                     type: 'bandpass', freq: band, q, dest: this.musicGain});
+    }
+
+    /** Chřestidlo z tykve v síti korálků – korálky nedopadnou úplně naráz. */
+    #shekere(when, open) {
+        this.#noise({dur: open ? 0.14 : 0.045, gain: open ? 0.075 : 0.055, when,
+                     type: 'bandpass', freq: 5200, q: 1.2, dest: this.musicGain});
+        this.#noise({dur: 0.03, gain: 0.03, when: when + 0.012, freq: 7000,
+                     dest: this.musicGain});
     }
 
     #crash(when) {
