@@ -30,7 +30,8 @@ const MIME = {
 };
 
 // Level, na kterém se měří dané téma (stačí jeden za každé)
-const THEME_LEVEL = {'bez tématu': 1, 'ice': 5, 'desert': 3, 'fire': 8, 'math': 11};
+const THEME_LEVEL = {'bez tématu': 1, 'ice': 2, 'desert': 3, 'fire': 4, 'math': 5,
+                     'jungle': 6};
 
 function serve() {
     const server = createServer(async (req, res) => {

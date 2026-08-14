@@ -11,7 +11,10 @@
  * pozadí dá duny se sluncem v prachu (taky se vlní horkem); `'math'` promění
  * hroty v operátory Δ a ∇, bloky v dlaždice rýsovacího papíru se symboly,
  * minci v ražbu s π, prstenec v křivkový integrál a do pozadí dá rýsovací
- * papír s geometrickými obrazci, mezi kterými jsou narýsované vztahy.
+ * papír s geometrickými obrazci, mezi kterými jsou narýsované vztahy;
+ * `'jungle'` mění hroty ze země v masožravé rostliny, hroty ze stropu v hady
+ * na liánách, bloky v zarostlé chrámové kvádry a do pozadí dá koruny stromů
+ * s pruhy světla, kmeny v mlze, liány a světlušky.
  * Téma je čistě vzhled, hra běží stejně.
  *
  * Mapa se čte zleva doprava, kostka běží sama a hráč jen skáče.

@@ -4,18 +4,26 @@ Skákací arkáda ve stylu Geometry Dash napsaná v čistém JavaScriptu (ES mod
 která běží celá na HTML `<canvas>`. Bez frameworků, bez závislostí, bez build kroku.
 
 Kostka běží sama pořád doprava a jediné, co s ní hráč dělá, je skok. Hra obsahuje
-15 úrovní, každou s vlastním tématem – propasti, plošiny, pily, poušť s kaktusy,
-ledová jeskyně, sopečná sloj s lávou, odrazové plošiny, skokové prstence,
-obrácená gravitace – a s rostoucí rychlostí i hustotou překážek. Každá stojí na
-vlastní sadě překážek, takže se kola neopakují.
+20 úrovní a každá stojí na vlastní sadě překážek – propasti, plošiny, pily,
+odrazové plošiny, skokové prstence, obrácená gravitace –, takže se kola
+neopakují. S každou úrovní roste rychlost i hustota překážek.
 
-Druhá půlka hry (úrovně 11–15) je **matematický svět**: rýsovací papír s osami,
-geometrické obrazce, které se v pozadí pomalu otáčejí a jsou mezi sebou propojené
-vztahy, operátory Δ a ∇ místo hrotů, mince ražené na π a prstenec jako křivkový
-integrál. Hraje se v něm o stupeň hůř – běží o 60 až 85 % rychleji než první
-úroveň a čekají tam pasti, které jednou překážkou neprojdeš: propast, přes kterou
-se dostaneš jen odrazovou plošinou a prstencem, portál nad prázdnotou, běh po
-stropě s dírami, nebo chodba, ve které strop krátí skok zrovna nad propastí.
+**Prostředí se po hře střídají**, nejdou po blocích: ledová jeskyně, poušť,
+sopečná sloj, matematický svět i džungle se prokládají od začátku do konce,
+takže žádná část hry nevypadá – a nezní – dlouho stejně. Prostředí je vzhled
+a hudba; obtížnost drží rychlost a překážky.
+
+Prostřední kapitola (úrovně 11–15) běží o 60 až 85 % rychleji než první úroveň
+a čekají v ní pasti, které jednou překážkou neprojdeš: propast, přes kterou se
+dostaneš jen odrazovou plošinou a prstencem, portál nad prázdnotou, běh po stropě
+s dírami, nebo chodba, ve které strop krátí skok zrovna nad propastí.
+
+Poslední kapitola (úrovně 16–20) běží na 190 až 210 % a mění se v ní i to, o čem
+hra je: skok tam přeletí přes deset políček, takže hustota překážek už
+nerozhoduje – odrazit se musíš dávno před propastí a hlídat, kam doskočíš.
+Čekají tam plošiny v korunách s děrami, ostrůvky s roztečí přesně na délku skoku,
+chodníček na kůlech, brána, kterou otevře jen odrazová plošina, a nakonec rokle,
+přes kterou tě přenese teprve plošina s prstencem dohromady.
 
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory. Na telefonu k nim přibude haptická odezva –
@@ -23,9 +31,11 @@ každá událost vibruje po svém.
 
 **▶️ Zahrát online: <https://joseftraxler.github.io/cube-runner/>**
 
-![Náhled hry Cube Runner – 2. úroveň, kostka skáče po ostrůvcích mostu nad propastí](docs/preview.png)
+![Náhled hry Cube Runner – 2. úroveň v ledové jeskyni, kostka skáče po ostrůvcích mostu nad propastí](docs/preview.png)
 
 ![Matematický svět – 11. úroveň: kostka skáče mezi sloupy z dlaždic se symboly, na zemi stojí operátory Δ a v pozadí se jednotková kružnice promítá do sinusovky](docs/math.png)
+
+![Džungle – 20. úroveň: kostka běží po zarostlých chrámových kvádrech v korunách stromů, v mezerách mezi nimi visí hadi a pod nimi rostou masožravé rostliny](docs/jungle.png)
 
 ## Ovládání
 
@@ -66,6 +76,8 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 | Propast s prstencem  | Širší, než kam doletí skok: přeneseš se přes ni jen prstencem, někdy až po odrazu z plošiny. |
 | Past s prstencem     | Nad prstencem visí hroty – odrazit se z něj smíš až při klesání, ne hned ve vrcholu skoku. |
 | Díra ve stropě       | Při obrácené gravitaci je strop podlaha, takže dírou v něm kostka vyletí z mapy. Přeskakuje se jako propast. |
+| Vyvýšený doskok      | Plošina, na kterou se doskakuje přes propast: kdo doletí nízko, narazí do její stěny. |
+| Nízký strop nad dírou| Strop uřízne vrchol skoku, takže díru pod ním musíš přeletět kratším obloukem. |
 
 Skok je vždycky stejně vysoký: vyskočí na blok vysoký **2 políčka** a přeskočí
 díru širokou **4 políčka**. S vyšší rychlostí úrovně se skok neprodlužuje do výšky,
@@ -87,6 +99,7 @@ barvy, ale i nástroje a styl:
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
 | poušť            | mexické mariachi – guitarrón, odsekávaná kytara, trubky v terciích      |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
+| džungle          | dřevo a kůže – bubny v tresillu 3–3–2, marimbové ostinato, dřevěná píšťala |
 
 Skladba navíc **graduje podle toho, jak daleko doběhneš**: na začátku hraje jen
 podklad s kopákem a přivřeným filtrem, kolem třetiny úrovně naskočí virbl,
@@ -160,7 +173,7 @@ js/
 │   ├── saw.js          Saw – rotující pila
 │   └── orbiter.js      Orbiter – koule na řetězu obíhající kolem kotvy
 └── levels/
-    └── level1.js … level15.js   definice jednotlivých úrovní
+    └── level1.js … level20.js   definice jednotlivých úrovní
 tools/
 ├── gen_levels.py       generátor úrovní + ověření průchodnosti simulací
 ├── playtest.mjs        automatické projití všech levelů v prohlížeči
@@ -178,15 +191,19 @@ vykreslit, zatímco každá entita se stará jen sama o sebe (svůj pohyb a vzhl
 Úroveň je instance třídy `Level`. Prvním argumentem je rychlost běhu v procentech
 základní rychlosti (100 = základ, 150 = o polovinu rychleji), následují řádky mapy.
 Místo čísla jde předat i `{speed, theme}` a dát úrovni vizuální téma. `'ice'`
-kreslí hroty jako modré krápníky, bloky jako namrzlé a nechá padat sníh (tak
-vypadá 5. úroveň), `'fire'` mění hroty ze země v pohyblivé plameny, hroty ze
-stropu v malé sopky, pod mapu položí lávovou řeku a obraz rozvlní horkým
-vzduchem (8. a 10. úroveň), `'desert'` staví místo hrotů ze země kaktusy, místo
+kreslí hroty jako modré krápníky, bloky jako namrzlé a nechá padat sníh
+(2., 7. a 13. úroveň), `'fire'` mění hroty ze země v pohyblivé plameny, hroty ze
+stropu v malé sopky, pod mapu položí lávovou řeku a obraz rozvlní horkým vzduchem
+(4., 9., 14. a 19. úroveň), `'desert'` staví místo hrotů ze země kaktusy, místo
 hrotů ze stropu poletující supy, bloky mění v pískovec a do pozadí dá duny se
-sluncem v prachu (3. a 6. úroveň) a `'math'` mění hroty v operátory Δ a ∇, bloky
-v dlaždice rýsovacího papíru se symbolem, minci v ražbu s π, prstenec v křivkový
-integrál a do pozadí dá rýsovací papír s geometrickými obrazci a vztahy mezi nimi
-(11.–15. úroveň). Téma je jen vzhled – hraje se pořád stejně:
+sluncem v prachu (3., 10. a 16. úroveň), `'math'` mění hroty v operátory Δ a ∇,
+bloky v dlaždice rýsovacího papíru se symbolem, minci v ražbu s π, prstenec
+v křivkový integrál a do pozadí dá rýsovací papír s geometrickými obrazci
+a vztahy mezi nimi (5., 11. a 17. úroveň) a `'jungle'` mění hroty ze země
+v masožravé rostliny, hroty ze stropu v hady na liánách, bloky v zarostlé
+chrámové kvádry a do pozadí dá koruny stromů, kmeny v mlze a světlušky
+(6., 12., 18. a 20. úroveň). Úrovně 1, 8 a 15 jsou bez tématu. Téma je jen
+vzhled – hraje se pořád stejně:
 
 ```js
 import {Level} from "../level.js";
@@ -239,7 +256,7 @@ Pořadí v poli určuje pořadí úrovní ve hře.
 (hrot, propast, plošina, strop, portál …) a **ověřuje simulací, že jdou doběhnout**:
 
 ```bash
-python3 tools/gen_levels.py           # vygeneruje js/levels/level1..15.js
+python3 tools/gen_levels.py           # vygeneruje js/levels/level1..20.js
 python3 tools/gen_levels.py --check   # jen ověří průchodnost, nic nepřepíše
 ```
 
@@ -259,7 +276,7 @@ Volitelně (potřebuje Node.js a `npm i -D playwright`) jde hru nechat celou pro
 v opravdovém prohlížeči a vyrobit náhled:
 
 ```bash
-node tools/playtest.mjs               # projde všech 15 levelů skutečným kódem hry
+node tools/playtest.mjs               # projde všech 20 levelů skutečným kódem hry
 node tools/swtest.mjs                 # ověří chování service workeru (offline vs. aktuálnost)
 node tools/audiotest.mjs              # ověří, že z hry opravdu leze zvuk
 node tools/perftest.mjs               # změří, kolik stojí snímek v každém tématu
