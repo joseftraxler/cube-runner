@@ -172,6 +172,18 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   zelená rostlina by splynula s pozadím a nebylo by poznat, co zabíjí.
   Téma navíc určuje **motiv hudby** (`THEMES` v `audio.js`) – na fyziku ani
   hitboxy ale nesahá. Drží je `LEVEL_THEMES` v generátoru.
+- **Světy se po hře střídají, nejdou po blocích.** Prostředí se přiřazuje
+  nezávisle na tom, z jaké kapitoly jsou úseky levelu: hráč tak vidí všechna
+  prostředí od začátku a žádná část hry nevypadá dlouho stejně. Úseky se ale
+  nestěhují – ty jsou svázané s rychlostí levelu (viz níž), takže vzhled a mapa
+  spolu nesouvisí a názvy úseků (`canopy`, `parabola`) říkají jen, pro který svět
+  vznikly. Bez tématu zůstávají levely 1, 8 a 15 – i „žádné téma“ je prostředí
+  a taky se střídá.
+- **Dva levely stejného tématu si nesmí sáhnout na tentýž motiv.** Hudba vybírá
+  obměnu jako `levelIndex % počet` (`Sound.setTrack`) a `Game.hue` odvozuje
+  z čísla levelu i odstín, takže třeba dva ledové levely se stejným zbytkem
+  by zněly i vypadaly úplně stejně. Hlídá to `check_theme_variety()`
+  v generátoru – jeho `THEME_VOICES` musí sedět s poli v `THEMES`.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen
@@ -201,7 +213,7 @@ Všechny úseky mají pevnou geometrii: přesně `HEIGHT` (14) řádků, podlaha
 `GROUND_ROW` (12), v zápisu se místo mezery píše `.` (funkce `pattern` to převede).
 Vizuální téma se levelu přiřadí v `LEVEL_THEMES` podle jeho čísla.
 
-**Levely 11–15 (matematický svět) jsou prostřední třetina hry a o stupeň těžší** – běží
+**Levely 11–15 jsou prostřední kapitola a o stupeň těžší** – běží
 na 160–185 % a stojí na vlastních úsecích, kde už nestačí jedna překážka:
 `ringspan` a `padring` mají propast, přes kterou se dostaneš jen prstencem
 (a `padring` až kombinací odrazové plošiny a prstence), `ringtrap` nad prstenec
@@ -215,7 +227,7 @@ Protože **délka skoku roste s rychlostí levelu** (~8,3 políčka na 160 %, ~9
 by přestaly sedět. Fáze koulí na řetězu (`pendulum`) navíc závisí na tom, kde
 v levelu úsek leží, takže se ověřuje **na svém místě v plánu**, ne zvlášť.
 
-**Levely 16–20 (džungle) jsou poslední třetina a běží na 190–210 %.** Tam už je
+**Levely 16–20 jsou poslední kapitola a běží na 190–210 %.** Tam už je
 skok dlouhý přes deset políček, takže hustotou překážek se obtížnost dělat nedá –
 jedním obloukem by se přeskákaly. Tyhle úseky proto stojí na něčem jiném:
 `canopy` a `treehop` na doskocích do korun (pod plošinami jsou trny, takže spodem
@@ -315,9 +327,11 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   `cutoff`/`gain` v motivu tématu.
 - `setTrack(levelIndex, speedPct, theme)` vybere motiv podle tématu a z čísla
   levelu v něm odvodí stupnici, harmonii i základní tón – proto mají pole motivu
-  tolik prvků, kolik má téma levelů: čtyři u `ice`/`fire`/`desert` (3 a 6, 8 a 10)
-  a **pět u `math` i `jungle`**, protože v obou těch světech je levelů pět
-  (11–15 a 16–20) a jinak by dva z nich sáhly na totéž.
+  aspoň tolik prvků, kolik má téma levelů: čtyři u `ice`/`fire`/`desert`
+  a **pět u `math` i `jungle`**. Protože se světy po hře střídají, nestačí
+  počet: čísla levelů daného tématu musí dávat **různé zbytky** po dělení tím
+  počtem, jinak dva levely sáhnou na tentýž motiv. Hlídá to
+  `check_theme_variety()` v generátoru.
   Melodii složí z generátoru náhodných čísel nasazeného na index levelu, takže
   každý level zní jinak, ale pokaždé stejně. Tempo se počítá z rychlosti levelu,
   takže rychlejší kolo hraje rychleji.
@@ -383,7 +397,7 @@ Další dva obrázky ukazují matematický svět a džungli a vznikají stejně:
 
 ```bash
 node tools/screenshot.mjs --level 11 --x 62 --out docs/math.png
-node tools/screenshot.mjs --level 16 --x 30 --out docs/jungle.png
+node tools/screenshot.mjs --level 20 --x 30 --out docs/jungle.png
 ```
 
 ## Konvence

@@ -930,7 +930,10 @@ PATTERNS = {
 ########################################################
 ########################################################
 """),
-    # --- úseky matematického světa (levely 11–15) ---
+    # --- úseky prostřední kapitoly (levely 11–15) ---
+    # Vznikly pro matematický svět, ale téma se s nimi nestěhuje – jsou to
+    # pasti, na které nestačí jedna překážka (prstenec nad propastí, portál
+    # nad prázdnotou, strop krátící skok).
     # Geometrická řada: propasti se zkracují (5, 4, 3 políčka), rytmus houstne
     'series': pattern("""
 ..............................
@@ -1215,7 +1218,7 @@ PATTERNS = {
 ##############............##############
 ##############............##############
 """),
-    # --- úseky džungle (levely 16–20) ---
+    # --- úseky poslední kapitoly (levely 16–20) ---
     # Poslední svět běží na 190–210 %, kde skok přeletí přes deset políček.
     # Hustě naskládané překážky by se tím pádem přeskákaly jedním obloukem –
     # tyhle úseky proto stojí na něčem jiném: na propastech s úzkými doskoky,
@@ -1569,7 +1572,7 @@ LEVEL_PLAN = [
            'flat4', 'coinarc', 'flat4', 'chain', 'flat4', 'bridge', 'flat4',
            'doublepit', 'flat4', 'spikepair', 'flat4', 'pit4', 'flat4',
            'coinrisk', 'flat4', 'chain', 'flat', 'finish']),
-    # 3 – poušť s terénem: běh po zdech, ostrůvcích a stolových horách se supy
+    # 3 – terén: běh po zdech, ostrůvcích a stavbách s hroty ze stropu
     (112, ['start', 'flat', 'wallrun', 'flat4', 'spiketower', 'flat4',
            'islands', 'flat4', 'highground', 'flat4', 'vulturemesa', 'flat4',
            'highroad', 'flat4', 'step2', 'flat4', 'stairs', 'flat4', 'fork',
@@ -1579,12 +1582,12 @@ LEVEL_PLAN = [
            'flat4', 'sawgap', 'flat4', 'spike2', 'flat4', 'sawrun', 'flat4',
            'orbitgap', 'flat4', 'saw', 'flat4', 'orbit2', 'flat4', 'sawair',
            'flat4', 'spikepair', 'flat', 'finish']),
-    # 5 – ledová jeskyně: samé stropy a krápníky
+    # 5 – samé stropy: nízké chodby a hroty visící shora
     (124, ['start', 'flat', 'ceiling', 'flat4', 'hangers', 'flat4', 'tunnel',
            'flat4', 'sandwich', 'flat4', 'corridor', 'flat4', 'ceilspikes',
            'flat4', 'spike3', 'flat4', 'hangers', 'flat4', 'tunnel', 'flat4',
            'coinrisk', 'flat', 'finish']),
-    # 6 – druhá poušť: odrazové plošiny, pasti, stavby a supi nad rovinou
+    # 6 – odrazové plošiny, pasti, stavby a hroty ze stropu nad rovinou
     (130, ['start', 'flat', 'pad', 'flat4', 'spiketower', 'flat4', 'padtrap',
            'flat4', 'platform', 'flat4', 'spikestair', 'flat4', 'padwall',
            'flat4', 'towers', 'flat4', 'vulturegap', 'flat4', 'fork', 'flat4',
@@ -1599,7 +1602,7 @@ LEVEL_PLAN = [
            'zigzag', 'flat4', 'corridor', 'flat4', 'gravity', 'flat4',
            'spikepair', 'flat4', 'tunnel', 'flat4', 'coinrisk', 'flat',
            'finish']),
-    # 9 – kombinace všech témat
+    # 9 – kombinace všeho, co dosud přišlo
     (148, ['start', 'flat', 'fork', 'flat4', 'saw', 'flat4', 'plateau',
            'flat4', 'gravitylock', 'flat4', 'sandwich', 'flat4', 'islands',
            'flat4', 'spikestair', 'flat4', 'orbit2', 'flat4', 'chain',
@@ -1611,7 +1614,7 @@ LEVEL_PLAN = [
            'highroad', 'flat4', 'gravity', 'flat4', 'plateau', 'flat4',
            'spikestair', 'flat4', 'fork', 'flat4', 'doublepit', 'flat4',
            'spikepair', 'flat', 'finish']),
-    # --- matematický svět (11–15): druhá půlka hry, o stupeň těžší ---
+    # --- prostřední kapitola (11–15): o stupeň těžší ---
     # Levely 1–10 zůstávají beze změny; těmhle pěti patří vlastní úseky
     # a rychlost, na kterou už jsou staré úseky moc pomalé.
     # 11 – mřížka a grafy: řady propastí, sloupy, schodovitá funkce, dvě cesty
@@ -1633,8 +1636,8 @@ LEVEL_PLAN = [
            'orbitrun', 'flat4', 'spike3', 'flat4', 'sawslalom', 'flat4',
            'pendulum', 'flat4', 'orbitrun', 'flat4', 'spikepair', 'flat4',
            'sawslalom', 'flat', 'finish']),
-    # 15 – finále: nejrychlejší a nejdelší, od každé kapitoly matematického
-    # světa jeden úsek a nakonec chodba s propastí a dvojice plošina + prstenec
+    # 15 – finále kapitoly: nejrychlejší a nejdelší, od každého jejího levelu
+    # jeden úsek a nakonec chodba s propastí a dvojice plošina + prstenec
     (185, ['start', 'flat', 'crusher', 'flat4', 'padring', 'flat4', 'series',
            'flat4', 'gravitygap', 'flat4', 'sawslalom', 'flat4', 'underpass',
            'flat4', 'ringtrap', 'flat4', 'pendulum', 'flat4', 'graphsteps',
@@ -1642,27 +1645,27 @@ LEVEL_PLAN = [
            'flat4', 'padring', 'flat', 'finish']),
     # Pozn.: `pillars` do finále nepatří – rozteč hlavic je sladěná s délkou
     # skoku na 160 %, na 185 % už doskok přeletí a úsek přestane být hratelný.
-    # --- džungle (16–20): třetí svět, poslední třetina hry ---
+    # --- poslední kapitola (16–20): nejdelší skoky ---
     # Na 190–210 % je skok dlouhý přes deset políček, takže hustota překážek
     # už obtížnost nedělá – tyhle levely stojí na propastech s úzkými doskoky
     # a na tom, že se kostka musí odrazit dávno před dírou.
-    # 16 – koruny stromů: běh a doskoky nahoře, dole hadi a rokle
+    # 16 – koruny: běh a doskoky po plošinách, pod nimi trny a hroty v dírách
     (190, ['start', 'flat', 'canopy', 'flat4', 'snakerun', 'flat4', 'logjump',
            'flat4', 'treehop', 'flat4', 'snakerun', 'flat4', 'canopy', 'flat4',
            'logjump', 'flat', 'finish']),
-    # 17 – bažina: leknínové ostrůvky, kůly nad vodou a pily jako krokodýli
+    # 17 – ostrůvky a kůly nad propastí, pily přesně v místě doskoku
     (195, ['start', 'flat', 'lilypads', 'flat4', 'crocgap', 'flat4', 'stiltpath',
            'flat4', 'crocrun', 'flat4', 'crocgap', 'flat4', 'lilypads', 'flat4',
            'stiltpath', 'flat', 'finish']),
-    # 18 – zarostlý chrám: brána s odrazovou plošinou, padací podlaha, oltář
+    # 18 – brána s odrazovou plošinou, padací podlaha se stropem, doskok na římsu
     (200, ['start', 'flat', 'templegate', 'flat4', 'trapfloor', 'flat4',
            'idolgap', 'flat4', 'stairfall', 'flat4', 'trapfloor', 'flat4',
            'templegate', 'flat4', 'idolgap', 'flat', 'finish']),
-    # 19 – liány a obrácené koruny: prstence, portál na strop, koule na řetězu
+    # 19 – prstence přes zeď i rokli, portál na strop, koule na řetězu
     (205, ['start', 'flat', 'ringroots', 'flat4', 'vinerings', 'flat4',
            'canopyflip', 'flat4', 'swingball', 'flat4', 'ringroots', 'flat4',
            'vinerings', 'flat', 'finish']),
-    # 20 – srdce džungle: nejdelší a nejrychlejší kolo, od každé kapitoly
+    # 20 – finále hry: nejdelší a nejrychlejší kolo, od každého levelu kapitoly
     # jeden úsek a dvakrát plošina s prstencem nad obří roklí
     (210, ['start', 'flat', 'canopy', 'flat4', 'lilypads', 'flat4', 'trapfloor',
            'flat4', 'swingball', 'flat4', 'jungleheart', 'flat4', 'idolgap',
@@ -1913,31 +1916,61 @@ export {{level{n}}};
 '''
 
 # Vizuální témata úrovní (viz Level v js/level.js). Bez záznamu = běžný vzhled.
+#
+# Světy se schválně **střídají po celé hře**, nejdou po blocích: hráč tak vidí
+# všechna prostředí od začátku a žádná část hry nevypadá dlouho stejně. Mapy na
+# tom nezávisí – téma je čistě vzhled a motiv hudby, obtížnost drží rychlost
+# a úseky v LEVEL_PLAN.
 LEVEL_THEMES = {
-    # Pouštní levely mají v plánu vlastní úsek s hroty ze stropu (vulturemesa,
-    # vulturegap) – jinak by se supi ve hře skoro neobjevili.
+    2: 'ice',       # ledová jeskyně – krápníky, namrzlé bloky, padající sníh
     3: 'desert',    # poušť – kaktusy, supi, pískovec, duny a rozpálený vzduch
-    5: 'ice',       # ledová jeskyně – krápníky, namrzlé bloky, padající sníh
-    6: 'desert',
-    8: 'fire',      # sopečná sloj – plameny, sopky, láva a chvění horkého vzduchu
-    10: 'fire',
-    # Matematický svět je celá druhá půlka hry (11–15) – rýsovací papír,
-    # obrazce v pozadí, operátory Δ/∇ místo hrotů. Odstín se v něm posouvá
-    # s číslem levelu, takže pět kol po sobě nevypadá stejně.
+    4: 'fire',      # sopečná sloj – plameny, sopky, láva a chvění horkého vzduchu
+    5: 'math',      # matematický svět – rýsovací papír, operátory Δ/∇, obrazce
+    6: 'jungle',    # džungle – chrámové kvádry, masožravé rostliny, hadi, koruny
+    7: 'ice',
+    9: 'fire',
+    10: 'desert',
     11: 'math',
-    12: 'math',
-    13: 'math',
-    14: 'math',
-    15: 'math',
-    # Džungle je poslední třetina hry (16–20) – zarostlé chrámové kvádry,
-    # trnité rostliny místo hrotů, hadi místo hrotů ze stropu a koruny stromů
-    # v pozadí. Odstín se i tady posouvá s číslem levelu.
-    16: 'jungle',
-    17: 'jungle',
+    12: 'jungle',
+    13: 'ice',
+    14: 'fire',
+    16: 'desert',
+    17: 'math',
     18: 'jungle',
-    19: 'jungle',
+    19: 'fire',
     20: 'jungle',
+    # Levely 1, 8 a 15 zůstávají bez tématu (temné synthwave, jak hra vypadala
+    # od začátku) – i „žádné téma“ je jedno z prostředí a má se taky střídat.
+    # Pozn.: pouštní levely mají v plánu vlastní úsek s hroty ze stropu
+    # (vulturemesa, vulturegap) – jinak by se supi ve hře skoro neobjevili.
 }
+
+# Kolik obměn motivu má které téma v `THEMES` (js/audio.js) – tolik prvků mají
+# jeho pole stupnic, harmonií a základních tónů. Musí sedět s audio.js.
+THEME_VOICES = {None: 4, 'ice': 4, 'fire': 4, 'desert': 4, 'math': 5, 'jungle': 5}
+
+
+def check_theme_variety():
+    """Hlídá, že se dva levely stejného tématu netrefí do stejného motivu.
+
+    Hudba si obměnu vybírá jako `levelIndex % počet` (viz `Sound.setTrack`),
+    takže třeba ledové levely 2 a 6 by zněly úplně stejně. Dokud šla témata
+    po blocích, vycházelo to samo; při promíchaných světech na to musí dohlídnout
+    tenhle test – jinak by se rozdíl ztratil a nikdo by si toho nevšiml.
+    """
+    used = {}
+    for n in range(1, len(LEVEL_PLAN) + 1):
+        theme = LEVEL_THEMES.get(n)
+        slot = (n - 1) % THEME_VOICES[theme]
+        clash = used.setdefault((theme, slot), n)
+        if clash != n:
+            raise ValueError(f'levely {clash} a {n} ({theme or "bez tématu"}) '
+                             f'by hrály stejný motiv – posuň jeden z nich')
+        # Odstín matematického a džunglového světa se počítá taky z čísla levelu
+        # (`Game.hue`), takže stejná obměna by znamenala i stejnou barvu
+
+
+check_theme_variety()
 
 
 def fingerprint(speed, rows):
