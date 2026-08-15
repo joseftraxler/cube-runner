@@ -106,7 +106,7 @@ barvy, ale i nástroje a styl:
 | bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
 | ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
-| poušť            | spaghetti western – cval koně v 6/8, tremolová kytara s echem, hvízdaný nápěv, bič |
+| poušť            | western na dvě doby – cval koně, „bum-ča“ basa, tremolová kytara, hvízdání a trubka |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
 | džungle          | africký bubnový kruh – kovový zvonec, djembe, chřestidlo, balafon a sbor hlasů |
 

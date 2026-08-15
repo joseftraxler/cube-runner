@@ -341,18 +341,19 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - AudioContext smí vzniknout **až po interakci uživatele** – proto se `unlock()`
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
-  ne v herní smyčce – jinak by při propadu snímků vynechávala. Krok je vždycky
-  šestnáctina; **délka taktu ale patří k motivu** (`profile.stepsPerBar`,
-  výchozí 16). Poušť si říká o 12, protože son se hraje v 6/8 – takt tím pádem
-  nesmí být v aranžmá napsaný natvrdo přes `STEPS_PER_BAR`, ale bere se
-  z `track.stepsPerBar`.
+  ne v herní smyčce – jinak by při propadu snímků vynechávala. Krok je
+  šestnáctina, takt jich má vždycky 16 (`STEPS_PER_BAR`). Jiné metrum se dělá
+  **přízvuky uvnitř taktu**, ne jinou délkou taktu: poušť se počítá na dvě
+  a bere jeden takt sekvenceru jako dvě dvojčtvrťové míry (kroky 0–7 a 8–15).
+  Zkoušelo se to i tak, že si téma řeklo o vlastní délku taktu, ale zůstal
+  z toho jen nepoužitý parametr navíc.
 - **Každé téma prostředí má vlastní motiv** – drží ho ale **prostředí**
   (`Theme.audio()` v `js/themes/`), ne zvuk: v `audio.js` je *jak* se hraje
   (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
   tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` spaghetti western v 6/8 (cval kopyt,
-  tremolová kytara, hvízdání, bič a osamělá trubka), `math` minimalistický běh
+  basou a opakovaným riffem, `desert` western na dvě doby (cval kopyt, „bum-ča“
+  basa s kytarou, tremolová kytara, hvízdání, bič a trubka), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
   Nástroje jsou sdílené
@@ -384,38 +385,54 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   je laděný podíly celých čísel (`JUST_MINOR`), ne půltóny: proti temperovanému
   zbytku hry je ta čistota slyšet. Když sem saháš, drž se toho – jinak z toho
   bude jen další synthwave.
-- **Poušť je spaghetti western, a hlavní nástroj je v něm prázdno.** Prostředí
-  je Sonora (kaktusy, stolové hory, supi), ne Sahara – proto jízda plání,
-  a ne orientální drón. Čtyři dřívější verze se neujaly a je z nich vidět,
-  kudy cesta nevede: ležící rákosové hlasy (drón a píšťala s vibratem, spíš
-  harmonika než prostředí), andaluská kadence s clave a palmas (clave je
-  kubánská a palmas španělské, takže z toho byla obecná „latina“), čtyřdobá
-  ranchera s generovanou melodií (správné nástroje, ale zněla jako etuda –
-  procházka po stupnici není nápěv) a norteño s harmonikou (mexické, ale
-  polka; hospoda, ne poušť). Na čem western stojí:
-  - **řídkost**: nápěvy (`WESTERN_PHRASES`) jsou z dlouhých tónů a širokých
-    intervalů, mezi nimi je ticho a dozvuk je dlouhý (`delay.mix` 0.32).
-    Prostor mezi tóny **je** ta poušť; jakmile se zaplácne během šestnáctin,
-    zbude honička jako v každé jiné hře,
-  - **6/8 cval** (`stepsPerBar: 12`): kopyta (`#hooves`) běží po osminách
-    s důrazem na obě tečkované doby a hrají **od prvního pokusu**, protože
-    v tak řídké skladbě by jinak na začátku levelu nebylo slyšet nic.
-    Je to jediné téma ve hře, které se nepočítá na čtyři,
-  - **mollová harmonie s andaluským sestupem** i–VII–VI–V (`progressions`
-    v půltónech 0–10–8–7) a na V dur se septimou (`chordSeventh`) – ta
-    klesající linka je celý western. Poušť tím **přestala být tématem bez
-    dramatu**; dur ze scenerie dělala veselou zábavu na náměstí,
-  - **napsané nápěvy, ne generované fráze**: dvojtaktí s nástupem, vrcholem
-    a závěrem plus společná kadence (`WESTERN_CADENCE`), která končí jedním
-    tónem drženým přes celý takt. Smyčka má formu A – A – B – závěr a level
-    si losuje jen to, které dva nápěvy zazní,
+- **Poušť je western: jízda plání na dvě doby.** Prostředí je Sonora (kaktusy,
+  stolové hory, supi), ne Sahara – proto jezdecká hudba, a ne orientální drón.
+  Pět dřívějších verzí se neujalo a je z nich vidět, kudy cesta nevede: ležící
+  rákosové hlasy (drón a píšťala s vibratem, spíš harmonika než prostředí),
+  andaluská kadence s clave a palmas (clave je kubánská a palmas španělské,
+  takže z toho byla obecná „latina“), čtyřdobá ranchera s generovanou melodií
+  (správné nástroje, ale zněla jako etuda – procházka po stupnici není nápěv),
+  norteño s harmonikou (mexické, ale polka; hospoda, ne poušť) a nakonec
+  minimalistický šestiosminový spaghetti western (atmosféra ano, ale ke hře
+  o běhu chyběl tah). Na čem stojí ten současný:
+  - **dvoučtvrťový takt s tečkovaným spádem**: takt sekvenceru drží **dvě
+    míry** (kroky 0–7 a 8–15), doba padá na každý čtvrtý krok a nápěvy mají
+    šestnáctinu těsně před dobou (kroky 3, 7, 11, 15). Ten hopsavý rytmus je
+    to, čím se jízda liší od pochodu; rovné osminky z toho udělají cirkus,
+  - **přízvuk na druhé době**: „bum-**ČA**“. Jednička patří base (guitarrón
+    střídá základ a kvintu po mírách), na dvojku dopadnou kopyta, odsek
+    kytary i virbl. Kdyby se přizvukovala jednička, je z jízdy pochod,
+  - **kopyta jsou kokosové skořápky** (`#hooves`), jak se kůň dělá u filmu:
+    dutá polokoule zvoní **nesoudělnými** vlastními tóny (1 : 1,58 : 2,9),
+    k tomu cvakne dřevo o dřevo a pod tím žuchne dopad do písku. Harmonické
+    poměry by z úderu udělaly tón. Váhy jsou tři (`strong` na přízvuk,
+    `medium` na jedničku, `soft` mezi doby) a hrají **od prvního pokusu
+    v plné sazbě** – nesou celou skladbu, protože poušť nemá ani bicí
+    soupravu, ani ozvěnu, která by prostor vyplnila za ně,
+  - **rychle**: `bpm` je počet čtvrtek za minutu, a protože je takt
+    dvoučtvrťový, znamená 196 zhruba 110–186 celých taktů „bum-ČA“ za minutu
+    podle rychlosti levelu. Vyladěno poslechem: poloviční tempo znělo jako
+    klusající povoz, o čtvrtinu rychlejší bylo na posledním pouštním levelu
+    (190 %) už neposlouchatelné,
+  - **žádná ozvěna** (`delay.mix: 0`) – jediné téma ve hře bez ní. V tomhle
+    tempu se tóny sypou tak hustě, že se i slabý slapback slil s nápěvem
+    v kaši. Prostor drží dusot kopyt, ne dozvuk,
+  - **kovbojská harmonie I–♭VII–IV** (`progressions` v půltónech 0–10–5):
+    durový základ se sníženou sedmičkou zní jako Amerika. Čistá moll z toho
+    dělá Leoneho drama, čistá dur veselou zábavu na náměstí,
+  - **prázdné kvinty místo akordů** (`chord: [0, 7, 12, 19]`): bez tercie sedí
+    kytara pod durovými i mollovými stupnicemi vyšších levelů a zní jako pláň,
+  - **napsané nápěvy, ne generované fráze** (`WESTERN_PHRASES`): dvojtaktí
+    s nástupem, vrcholem a závěrem plus společná kadence (`WESTERN_CADENCE`),
+    která nechá oktávu ležet přes celý takt. Smyčka má formu A – A – B – závěr
+    a level si losuje jen to, které dva nápěvy zazní,
   - **nápěv se za harmonií posouvá kratší cestou** (`chordShift`): kvinta
     nahoru = kvarta dolů, takže melodie zůstane v poloze, ve které se dá
     hvízdat. Posun vždycky nahoru ji na dominantě vystřelil o kvintu výš
     a smyčka uskakovala z rejstříku do rejstříku,
-  - **gradace odshora**: kytara vede vždycky, hvízdání (`#whistle`) se přidá
-    v druhém stupni a trubka se sborem až ve třetím – a **jen v posledních
-    dvou taktech smyčky**, aby zůstala událostí, ne podkladem.
+  - **gradace přidává hlasy k nápěvu**: kytara vede vždycky, ve druhém stupni
+    ji zdvojí hvízdání (`#whistle`) a ve třetím trubka se sborem – teprve tam
+    je z toho ta velká širokoúhlá jízda.
   Když saháš do kytary (`#twang`), nech jí tremolo (houpání hlasitosti kolem
   7 Hz) a krátký pokles tónu na nasazení – bez nich z ní budou varhany.
   U hvízdání (`#whistle`) drž vibrato až na druhou půlku tónu, jinak z toho
@@ -426,8 +443,8 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
   ležící hlas se tam zkoušel a překážel. Na poušti to obstará tlumené drnknutí
-  kytary (`#strum`) na odraz doby – na dominantě dur se septimou, protože ta
-  septima je konec andaluské kadence.
+  kytary (`#strum`) mezi doby – a jako jediné ve hře **bez tercie**, protože
+  prázdná kvinta sedí pod durovými i mollovými stupnicemi jejích levelů.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost

@@ -3,9 +3,7 @@
  * (oscilátory a šum) – nenačítá se žádný zvukový soubor. Hra tak zůstává bez
  * závislostí, funguje offline a v repozitáři nejsou binární data.
  *
- * Hudba je krokový sekvencer: krok je šestnáctina, harmonie se točí po osmi
- * taktech. Takt má 16 kroků (4/4); téma si může říct o jiný přes
- * `profile.stepsPerBar` – poušť cválá v 6/8, tedy po dvanácti krocích.
+ * Hudba je krokový sekvencer: 16 kroků na takt, harmonie se točí po osmi taktech.
  * Neroste ale s časem, nýbrž **s postupem v levelu** (`setIntensity`) – čím dál
  * kostka doběhne, tím je skladba plnější: nejdřív jen podklad s kopákem, pak
  * naskočí virbl, melodie s dozvukem a akordové údery, nakonec arpeggio,
@@ -19,16 +17,16 @@
  * nástroje i rytmus. Motiv si ale drží prostředí (`Theme.audio()` v `js/themes/`),
  * ne zvuk: tady je **jak se hraje** (nástroje a aranžmá), tam **co se hraje**.
  * Beztémové levely drží temné synthwave, led hraje pomalé zvonky nad ležícím
- * podkladem, oheň dusá chraplavým riffem, poušť je spaghetti western v 6/8 –
- * cval koně, tremolová kytara a hvízdaný nápěv –, matematický svět běží
+ * podkladem, oheň dusá chraplavým riffem, poušť je western na dvě doby –
+ * cval koně, „bum-ča“ basa, tremolová kytara a hvízdání –, matematický svět běží
  * minimalisticky (metronom, skleněné tóny, souměrné stupnice a melodická buňka,
  * která se proti taktu posouvá) a džungle je africký bubnový kruh: kovový zvonec
  * drží linku, djembe hrají do jejích mezer, balafon na to skládá ostinato
  * a nad vším zpívá sbor hlasů.
  *
- * Dramatický ráz drží všechna témata včetně pouště: ta je western, takže moll
- * a andaluský sestup. Veselá durová verze se tam zkoušela (mariachi, norteño)
- * a zněla jako zábava na náměstí, ne jako vyprahlá pláň.
+ * Poušť je jediná, která nestojí v moll: western jede na durovém základu se
+ * sníženou sedmičkou (I–♭VII–IV). Čistá moll z ní dělala truchlivé drama
+ * a čistá dur zase zábavu na náměstí – teprve ta ♭VII zní jako Amerika.
  *
  * V rámci tématu má každý level vlastní stupnici, harmonii i základní tón podle
  * svého čísla a tempo podle své rychlosti; melodie se losuje ze seedu podle
@@ -40,10 +38,9 @@
 
 const STORAGE_KEY = 'cube-runner-muted';
 
-// Výchozí takt je čtyřdobý: 16 šestnáctin. Téma si může říct o jiný
-// (`profile.stepsPerBar`) – poušť cválá v 6/8, tedy 12 šestnáctin.
 const STEPS_PER_BAR = 16;
 const BARS = 8;
+const PATTERN_STEPS = STEPS_PER_BAR * BARS;
 
 // Hranice postupu levelem, na kterých se přidá další vrstva nástrojů
 const TIERS = [0.28, 0.58];
@@ -67,6 +64,7 @@ export const SCALE = {
     wholeTone: [0, 2, 4, 6, 8, 10],         // celotónová – souměrná, bez těžiště
     octatonic: [0, 2, 3, 5, 6, 8, 9, 11],   // zmenšená – opakuje se po malých terciích
     major: [0, 2, 4, 5, 7, 9, 11],          // durová – jediná bez špetky napětí
+    mixolydian: [0, 2, 4, 5, 7, 9, 10],     // durová se sníženou septimou – kovbojská
     majorPenta: [0, 2, 4, 7, 9],            // durová pentatonika – bez půltónů
     majorHexa: [0, 2, 4, 7, 9, 11],         // durová bez kvarty – nikdy se netluče s dominantou
 };
@@ -88,39 +86,40 @@ const JUST_MINOR = [1, 6 / 5, 3 / 2, 2];
 const BELL = [0, 3, 6, 8, 11, 14];
 
 /**
- * Nápěvy pouštního westernu – **hotová dvojtaktí v 6/8**, ne rytmus k vyplnění
- * náhodnými tóny. Zapsané jsou jako [krok v šestnáctinách, půltón nad
- * základním tónem]; takt má dvanáct kroků, doba je tečkovaná čtvrtka (kroky 0
- * a 6) a osminy padají na sudé kroky.
+ * Nápěvy westernu – **hotová dvojtaktí**, ne rytmus k vyplnění náhodnými tóny.
+ * Zapsané jsou jako [krok v šestnáctinách, půltón nad základním tónem].
  *
- * Melodie jsou schválně **řídké a z dlouhých tónů**: pod nimi cválá kůň
- * a prázdné místo mezi tóny je to, co dělá poušť pouští. Běh šestnáctin by tu
- * dálku zaplácl – a přesně na tom ztroskotaly předchozí generované verze.
- * Intervaly jsou široké (kvinta, oktáva), protože tenhle nápěv se hvízdá.
+ * Počítá se **na dvě**: v jednom taktu sekvenceru jsou dvě dvojčtvrťové míry
+ * (kroky 0–7 a 8–15), doba padá na každý čtvrtý krok. Celá smyčka je tím pádem
+ * šestnáct dvojčtvrťových měr – běžná délka westernové písně.
+ *
+ * Rytmus je **tečkovaný**: tón na dobu, šestnáctina těsně před další dobou
+ * (kroky 3, 7, 11, 15) a zase doba. Ten hopsavý spád je to, čím se westernová
+ * jízda pozná od pochodu; rovné osminky z toho udělají cirkusový mars.
  */
 const WESTERN_PHRASES = [
-    // Volání: základ a kvinta, každá na celou dobu – nejprázdnější z nápěvů
-    [[0, 0], [6, 7],
-     [12, 10], [16, 7], [18, 5]],
-    // Jezdec: stoupání za obzor, tečkovaný rytmus proti cvalu
-    [[0, 0], [4, 3], [6, 5], [10, 7],
-     [12, 10], [16, 7], [20, 5]],
-    // Nářek: andaluský sestup od oktávy dolů, po dvojicích tónů
-    [[0, 12], [2, 10], [6, 8], [8, 7],
-     [12, 8], [14, 7], [18, 5], [20, 3]],
-    // Kytarový ostinát: jediný nápěv, který drží rytmus místo melodie
-    [[0, 0], [2, 0], [4, 3], [6, 0], [8, 5], [10, 3],
-     [12, 0], [14, 0], [16, 3], [18, 5], [20, 7]],
+    // Jízda: stoupání za obzor, tečkovaný rytmus proti cvalu
+    [[0, 0], [3, 3], [4, 5], [8, 7], [11, 5], [12, 7],
+     [16, 10], [19, 7], [20, 12], [24, 10], [28, 7]],
+    // Píseň u ohně: klidná, zpěvná, po stupnici dolů a zpátky
+    [[0, 7], [4, 5], [6, 3], [8, 0], [12, 3],
+     [16, 5], [20, 7], [22, 5], [24, 3], [28, 0]],
+    // Fanfára: opakované tóny a skok na oktávu, jak se troubí do útoku
+    [[0, 0], [2, 0], [4, 0], [7, 3], [8, 5], [12, 5],
+     [16, 7], [18, 7], [20, 10], [23, 10], [24, 12], [28, 10]],
+    // Hnaní stáda: sestup shora, nejhutnější z nápěvů
+    [[0, 12], [3, 10], [4, 8], [8, 7], [11, 8], [12, 7],
+     [16, 5], [19, 3], [20, 5], [24, 3], [28, 0]],
 ];
 
 /**
- * Závěr smyčky: výjezd na oktávu a **dlouhý tón přes celý poslední takt**,
- * pod kterým kůň běží dál. Tohle je ta chvíle, kdy v západním filmu nastoupí
- * osamělá trubka; podle ní je slyšet, že se smyčka vrací na začátek.
+ * Závěr smyčky: výjezd na oktávu, ta zůstane ležet přes celý takt a pod ní
+ * doběhne cval. Poslední dva tóny klesnou na kvintu, ze které se smyčka vrací
+ * na začátek – bez toho by se konec a začátek srazily.
  */
 const WESTERN_CADENCE = [
-    [0, 7], [4, 8], [6, 10], [10, 12],
-    [12, 12],
+    [0, 7], [4, 10], [6, 12], [8, 12], [12, 10],
+    [16, 12], [24, 10], [28, 7],
 ];
 
 // Křivka měkkého oříznutí pro waveshaper – dá ohnivé base a úderům chraplák
@@ -198,16 +197,14 @@ function stepsToNext(melody, step, max) {
  * Melodie na celou smyčku (pole půltónů nad **základním tónem levelu**,
  * `null` = pomlka). Styl řídí rytmus i tvar fráze – tím se motivy témat liší
  * nejvíc. Harmonii (`prog`) potřebuje jen son, který na ni váže fráze,
- * a `stepsPerBar` říká, jak dlouhý je takt (poušť hraje v 6/8, ostatní 4/4).
  */
-function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
-    const patternSteps = BARS * stepsPerBar;
-    const melody = new Array(patternSteps).fill(null);
+function buildMelody(style, scale, random, prog) {
+    const melody = new Array(PATTERN_STEPS).fill(null);
 
     switch (style) {
         // Led: řídké zvonky na čtvrtkách, občas o oktávu výš
         case 'bells':
-            for (let i = 0; i < patternSteps; i += 4) {
+            for (let i = 0; i < PATTERN_STEPS; i += 4) {
                 if (random() < 0.55) {
                     const degree = degreeAt(scale, Math.floor(random() * scale.length));
                     melody[i] = degree + (random() < 0.4 ? 12 : 0);
@@ -217,14 +214,14 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
 
         // Oheň: jednotaktový riff, který se pořád dokola opakuje – těžké doby drží základ
         case 'riff': {
-            const riff = new Array(stepsPerBar).fill(null);
-            for (let i = 0; i < stepsPerBar; i++) {
+            const riff = new Array(STEPS_PER_BAR).fill(null);
+            for (let i = 0; i < STEPS_PER_BAR; i++) {
                 const chance = i % 4 === 0 ? 0.95 : (i % 2 === 0 ? 0.5 : 0.3);
                 if (random() < chance) {
                     riff[i] = i % 4 === 0 ? 0 : degreeAt(scale, Math.floor(random() * 4));
                 }
             }
-            for (let i = 0; i < patternSteps; i++) melody[i] = riff[i % stepsPerBar];
+            for (let i = 0; i < PATTERN_STEPS; i++) melody[i] = riff[i % STEPS_PER_BAR];
             break;
         }
 
@@ -252,7 +249,7 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
             form.forEach((phrase, part) => {
                 let last = null;
                 for (const [at, semi] of phrase) {
-                    const bar = part * 2 + Math.floor(at / stepsPerBar);
+                    const bar = part * 2 + Math.floor(at / STEPS_PER_BAR);
                     let idx = degreeOf(scale, semi) + chordShift(scale, prog[bar % prog.length]);
                     // Ve stupnici bez půltónů můžou dva sousední tóny nápěvu
                     // padnout na tentýž stupeň – druhý se posune dál, ať fráze
@@ -260,7 +257,7 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
                     if (last && idx === last.idx && semi !== last.semi) {
                         idx += semi > last.semi ? 1 : -1;
                     }
-                    melody[bar * stepsPerBar + at % stepsPerBar] = degreeAt(scale, idx);
+                    melody[bar * STEPS_PER_BAR + at % STEPS_PER_BAR] = degreeAt(scale, idx);
                     last = {idx, semi};
                 }
             });
@@ -277,7 +274,7 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
             for (let i = 0; i < length; i++) {
                 cell[i] = random() < 0.78 ? degreeAt(scale, Math.floor(random() * 5)) : null;
             }
-            for (let i = 0; i < patternSteps; i++) melody[i] = cell[i % length];
+            for (let i = 0; i < PATTERN_STEPS; i++) melody[i] = cell[i % length];
             break;
         }
 
@@ -289,7 +286,7 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
             for (let bar = 0; bar < BARS; bar++) {
                 BELL.forEach((hit, k) => {
                     const lift = bar % 4 === 3 && k >= BELL.length - 2 ? 12 : 0;
-                    melody[bar * stepsPerBar + hit] = cell[k] + lift;
+                    melody[bar * STEPS_PER_BAR + hit] = cell[k] + lift;
                 });
             }
             break;
@@ -297,7 +294,7 @@ function buildMelody(style, scale, random, prog, stepsPerBar = STEPS_PER_BAR) {
 
         // Synthwave: volné tóny na sudých krocích
         default:
-            for (let i = 0; i < patternSteps; i++) {
+            for (let i = 0; i < PATTERN_STEPS; i++) {
                 const degree = scale[Math.floor(random() * scale.length)];
                 melody[i] = i % 2 === 0 && random() < 0.5
                     ? degree + (random() < 0.35 ? 12 : 0)
@@ -428,19 +425,12 @@ export class Sound {
         const prog = profile.progressions[levelIndex % profile.progressions.length];
         const random = rng(levelIndex * 2654435761 + 12345);
 
-        // Délka taktu patří k motivu: poušť hraje son v 6/8 (12 šestnáctin),
-        // ostatní témata čtyřdobě. Krok je pořád šestnáctina, takže tempo
-        // znamená ve všech tématech totéž.
-        const stepsPerBar = profile.stepsPerBar ?? STEPS_PER_BAR;
-
         this.track = {
             root: 55 * semitone(profile.roots[levelIndex % profile.roots.length]),
             prog,
             // Rychlejší level = svižnější hudba (tempo roste s obtížností)
             stepDur: 60 / (profile.bpm * speedPct / 100) / 4,
-            melody: buildMelody(profile.melody, scale, random, prog, stepsPerBar),
-            stepsPerBar,
-            patternSteps: BARS * stepsPerBar,
+            melody: buildMelody(profile.melody, scale, random, prog),
             scale,
             profile,
         };
@@ -492,15 +482,15 @@ export class Sound {
         while (this.nextStepTime < this.ctx.currentTime + LOOKAHEAD) {
             this.#playStep(this.step, this.nextStepTime);
             this.nextStepTime += this.track.stepDur;
-            this.step = (this.step + 1) % this.track.patternSteps;
+            this.step = (this.step + 1) % PATTERN_STEPS;
         }
     }
 
     #playStep(step, when) {
         const t = this.track;
         const profile = t.profile;
-        const bar = Math.floor(step / t.stepsPerBar);
-        const inBar = step % t.stepsPerBar;
+        const bar = Math.floor(step / STEPS_PER_BAR);
+        const inBar = step % STEPS_PER_BAR;
         const root = t.root * semitone(t.prog[bar % t.prog.length]);
 
         // Stupeň instrumentace podle toho, jak daleko kostka doběhla
@@ -657,68 +647,81 @@ export class Sound {
     }
 
     /**
-     * Poušť: spaghetti western. Prostředí je Sonora – kaktusy, stolové hory
-     * a supi –, takže hudba je **jízda pouští**: pod vším cválá kůň (`#hooves`
-     * v šestiosminovém taktu), nad ním visí tremolová kytara s dlouhým echem,
-     * nápěv hvízdá člověk a v nejvyšším stupni nastoupí osamělá trubka se
-     * sborem. Bič (`#whipCrack`) práskne na začátku každé fráze.
+     * Poušť: western. Prostředí je Sonora – kaktusy, stolové hory a supi –,
+     * takže hudba je **jízda plání ve dvoučtvrťovém taktu**: v každém taktu
+     * sekvenceru jsou dvě míry, doba padá na každý čtvrtý krok.
      *
-     * **Prázdno je nástroj.** Nástroje hrají řídce a dlouhé tóny se nechají
-     * doznít do echa; kdyby se mezery zaplácly, byla by z toho běžná honička
-     * a poušť by z ní zmizela. Ze stejného důvodu tu není žádná bicí souprava:
-     * puls drží kopyta a doznívající struny.
+     * Těžiště taktu je na **druhé době**: tam dopadnou kopyta i odsek kytary
+     * („bum-ČA“), zatímco jednička patří base. Kdyby se přizvukovala jednička,
+     * byl by z jízdy pochod. Guitarrón střídá základ a kvintu po mírách,
+     * kytara na dvojce odsekne akord. Nápěv vede tremolová
+     * kytara, v druhém stupni ho zdvojí hvízdání a ve třetím
+     * trubka se sborem: teprve tam je z toho ta velká širokoúhlá jízda.
+     * Bič (`#whipCrack`) práskne na začátku každé fráze.
      */
     #arrangeDesert({t, root, bar, inBar, step, tier, when}) {
-        // Dominanta se septimou – v mollové (andaluské) kadenci je to ten tón,
-        // který táhne zpátky k základu
+        // Dominanta se septimou – ten tón táhne zpátky k základu
         const degree = t.prog[bar % t.prog.length];
         const shape = degree === 7 ? t.profile.chordSeventh : t.profile.chord;
+        const beat = inBar % 4;         // kde jsme uvnitř doby
+        const inBeat = inBar % 8;       // kde jsme uvnitř dvojčtvrťové míry
 
-        // ---- cval: šest osmin v taktu, důraz na obě tečkované doby ----
-        // Kůň běží od prvního pokusu – nápěv je řídký a bez cvalu by na
-        // začátku levelu nebylo slyšet skoro nic
-        if (inBar % 2 === 0) this.#hooves(when, inBar % 6 === 0);
+        // ---- cval: dopad na **druhou dobu** ----
+        // Přízvuk na dvojce je celý tenhle žánr: na jedničku kůň našlápne,
+        // na dvojku dopadne. Kdyby byl důraz na jedničce, je z jízdy pochod.
+        // Kopyta nesou celou skladbu: hrají od prvního pokusu a v plné sazbě,
+        // protože poušť nemá ani bicí soupravu, ani ozvěnu, která by prostor
+        // vyplnila za ně.
+        if (inBeat === 0) this.#hooves(when, 'medium');
+        if (inBeat === 4) this.#hooves(when, 'strong');
+        if (beat === 2) this.#hooves(when, 'soft');
+        // Šestnáctina těsně před dobou – z ní je teprve cval, ne klus
+        if (tier >= 1 && beat === 3) this.#hooves(when, 'soft');
         // Bič otevírá frázi – jednou za dvojtaktí, aby zůstal událostí
         if (tier >= 1 && bar % 2 === 0 && inBar === 0) this.#whipCrack(when);
+        // Virbl jde s přízvukem, ne proti němu
+        if (tier >= 1 && inBeat === 4) this.#snare(when, tier >= 2 && inBar === 12);
 
-        // ---- basa: drnknutý základ na dobu, kvinta v půlce taktu ----
-        if (inBar === 0) this.#guitarron(root, t.stepDur * 5, 0.24, when);
-        if (tier >= 1 && inBar === 6) this.#guitarron(root * 1.5, t.stepDur * 4.5, 0.19, when);
-        // Nájezd k základu dalšího akordu vyplní mezeru na konci taktu –
-        // v tak řídké skladbě je to jediné, co ji táhne přes předěl
-        if (tier >= 1 && inBar === 10) {
+        // ---- basa „bum“: jednička každé míry, střídavě základ a kvinta ----
+        if (inBar === 0) this.#guitarron(root, t.stepDur * 3.4, 0.24, when);
+        if (inBar === 8) this.#guitarron(root * 1.5, t.stepDur * 3.4, 0.2, when);
+        // Před změnou akordu se basa rozeběhne k jeho základu zezdola
+        if (tier >= 1 && inBar === 14) {
             const next = t.prog[(bar + 1) % t.prog.length];
-            this.#guitarron(t.root * semitone(next - 2), t.stepDur * 1.6, 0.15, when);
+            this.#guitarron(t.root * semitone(next - 2), t.stepDur * 1.4, 0.15, when);
         }
 
-        // ---- kytara: tlumený akord na odraz doby, jediná plná harmonie ----
-        if (tier >= 1 && (inBar === 4 || inBar === 10)) {
-            this.#strum(root, shape, t.stepDur * 1.6, inBar === 4 ? 0.075 : 0.055, when, 0.012);
+        // ---- kytara „ČA“: přízvučný odsek na druhou dobu ----
+        // Tady je těžiště taktu a zároveň jediná plná harmonie ve skladbě
+        if (inBeat === 4) {
+            this.#strum(root, shape, t.stepDur * 1.5, tier >= 1 ? 0.1 : 0.08, when, 0.012);
+        }
+        // V nejvyšším stupni ještě přiťuknutí za dvojkou, ať to tlačí dopředu
+        if (tier >= 2 && inBeat === 6) {
+            this.#strum(root, shape, t.stepDur * 0.9, 0.045, when, 0.008);
         }
 
-        // ---- melodie: kytara vede, hvízdání ji zdvojí o oktávu výš ----
+        // ---- melodie: kytara vede, výš ji zdvojí hvízdání a trubka ----
         const note = t.melody[step];
         // Na začátku levelu zazní jen půlka smyčky, ale vždycky **celé
         // dvojtaktí** – utnout nápěv po prvním taktu by znamenalo utnout ho
         // před tónem, do kterého celý míří
         if (note !== null && (tier >= 1 || bar % 4 < 2)) {
-            // Délku určí mezera do dalšího tónu; dlouhé tóny se tu nechají
-            // ležet přes celý takt, protože z nich je ta dálka
+            // Délku určí mezera do dalšího tónu: tečkovaný rytmus tak odsekává
+            // a ležatý závěr fráze zůstane znít přes celý takt
             const dur = t.stepDur * stepsToNext(t.melody, step, 12) * 0.95;
             this.#twang(t.root * 2 * semitone(note), dur, tier >= 1 ? 0.11 : 0.085, when);
             if (tier >= 1) {
-                this.#whistle(t.root * 4 * semitone(note), dur, 0.075, when + 0.02);
+                this.#whistle(t.root * 4 * semitone(note), dur, 0.07, when + 0.02);
             }
-            // Trubka si nechává nástup na závěr smyčky – tam, kde v západním
-            // filmu kamera couvne a ukáže celou pláň
-            if (tier >= 2 && bar >= BARS - 2) {
-                this.#trumpet(t.root * 4 * semitone(note), dur, 0.085, when + 0.01);
+            if (tier >= 2) {
+                this.#trumpet(t.root * 4 * semitone(note), dur, 0.08, when + 0.01);
             }
         }
 
         // ---- sbor: ležící „á“ pod nápěvem, až v nejvyšším stupni ----
-        if (tier >= 2 && bar % 2 === 0 && inBar === 0) {
-            this.#chantChord(root, t.stepDur * 11, 0.045, when);
+        if (tier >= 2 && bar % 4 === 0 && inBar === 0) {
+            this.#chantChord(root, t.stepDur * 14, 0.04, when);
         }
     }
 
@@ -1074,11 +1077,11 @@ export class Sound {
     }
 
     /**
-     * Kytara spaghetti westernu. Struna se drnkne přes úzké pásmo kolem
-     * 2 kHz – odtud ten kovový „twang“ – a hlasitost pak rozkmitá **tremolo**
-     * (tepání kolem 7 Hz). Právě to chvění, a ne dozvuk, dělá ze sólové
-     * kytary western; ozvěnu má nástroj navíc z `leadGain`, protože poušť je
-     * prázdná a tón v ní má mít kam odletět.
+     * Westernová kytara. Struna se drnkne přes úzké pásmo kolem 2 kHz – odtud
+     * ten kovový „twang“ – a hlasitost pak rozkmitá **tremolo** (tepání kolem
+     * 7 Hz). Právě to chvění, a ne ozvěna, dělá ze sólové kytary western:
+     * poušť žádnou ozvěnu nemá, protože v jejím tempu se každý odraz slije
+     * s nápěvem.
      *
      * Tón na nasazení krátce klesne, jako když prst uhne po struně – bez toho
      * zní kytara jako varhany.
@@ -1563,18 +1566,50 @@ export class Sound {
     }
 
     /**
-     * Kopyta cválajícího koně: tupá rána do písku a k ní dřevěné klapnutí
-     * podkovy. Na doby (`beat`) dopadá kůň plnou vahou, mezi nimi lehčeji –
-     * bez toho rozdílu z cvalu zbude strojové ťukání. Je to jediná perkuse
-     * pouště; bicí souprava by na prázdnou pláň nepatřila.
+     * Kopyta cválajícího koně – **tlukot dvou kokosových skořápek**, jak se
+     * kůň odjakživa dělá u filmu. Dutá skořápka po úderu chvíli zvoní, k tomu
+     * cvakne dřevo o dřevo a pod tím žuchne dopad do písku.
+     *
+     * `weight` říká, jak kůň došlápne: `strong` je dopad na přízvučnou dobu
+     * (nejhlubší a nejdelší), `medium` našlápnutí, `soft` proklouznutí mezi
+     * dobami. Bez těch tří vah zbude ze cvalu strojové ťukání.
      */
-    #hooves(when, beat) {
-        this.#tone({freq: beat ? 200 : 250, freqTo: beat ? 85 : 130, type: 'triangle',
-                    dur: beat ? 0.05 : 0.035, gain: beat ? 0.2 : 0.1,
+    #hooves(when, weight) {
+        // Skořápka je dutá polokoule: má pár **vlastních tónů v nesoudělných
+        // poměrech** (1 : 1,58 : 2,9), které po úderu rychle dozní. Kdyby byly
+        // v harmonické řadě, zněl by z toho tón, a ne dřevo.
+        const base = weight === 'strong' ? 380 : weight === 'soft' ? 610 : 470;
+        // Doznělka je krátká schválně: na nejrychlejším pouštním levelu je mezi
+        // údery jen osmdesát milisekund a delší zvonění by se slilo v hučení
+        const ring = weight === 'strong' ? 0.075 : weight === 'soft' ? 0.038 : 0.055;
+        const gain = weight === 'strong' ? 0.3 : weight === 'soft' ? 0.08 : 0.16;
+
+        for (const [ratio, level, decay] of [[1, 1, 1], [1.58, 0.45, 0.65], [2.9, 0.14, 0.3]]) {
+            const osc = this.ctx.createOscillator();
+            const env = this.ctx.createGain();
+
+            osc.type = 'sine';
+            // Náraz tón na okamžik vytlačí nahoru a on pak sedne – to je ten
+            // dřevěný „klop“; bez toho je z úderu pípnutí
+            osc.frequency.setValueAtTime(base * ratio * 1.08, when);
+            osc.frequency.exponentialRampToValueAtTime(base * ratio, when + 0.012);
+
+            env.gain.setValueAtTime(0.0001, when);
+            env.gain.exponentialRampToValueAtTime(gain * level, when + 0.002);
+            env.gain.exponentialRampToValueAtTime(0.0001, when + ring * decay);
+
+            osc.connect(env).connect(this.musicGain);
+            osc.start(when);
+            osc.stop(when + ring + 0.02);
+        }
+
+        // Cvaknutí skořápky o skořápku – teprve z něj je slyšet dřevo
+        this.#noise({dur: 0.008, gain: gain * 0.5, when, type: 'highpass',
+                     freq: 2600, dest: this.musicGain});
+        // …a pod tím dusot: tupý dopad do písku
+        this.#tone({freq: weight === 'strong' ? 150 : 190, freqTo: 70, type: 'sine',
+                    dur: weight === 'strong' ? 0.06 : 0.035, gain: gain * 0.7,
                     when, dest: this.musicGain});
-        this.#noise({dur: beat ? 0.045 : 0.03, gain: beat ? 0.12 : 0.06, when,
-                     type: 'bandpass', freq: beat ? 950 : 1400, q: 2.4,
-                     dest: this.musicGain});
     }
 
     /**

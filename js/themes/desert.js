@@ -7,8 +7,9 @@ import {SCALE} from "../audio.js";
  * z pískovce a v pozadí stojí duny se sluncem v prachu. Nad rozpáleným pískem
  * se obraz vlní horkým vzduchem – míň než nad ohněm, ale je to znát.
  *
- * Hudba je spaghetti western: cval koně, tremolová kytara a hvízdaný nápěv
- * nad prázdnou plání. Krajina je Sonora, ne Sahara – a hudba taky.
+ * Hudba je western: cval koně ve dvoučtvrťovém taktu, „bum-ča“ basa
+ * s kytarou, hvízdaný nápěv a trubka. Krajina je Sonora, ne Sahara – a hudba
+ * taky.
  */
 export class Desert extends Theme
 {
@@ -445,46 +446,47 @@ export class Desert extends Theme
     }
 
     /**
-     * Poušť – **spaghetti western**: jízda vyprahlou plání. Pod vším cválá
-     * kůň, nad ním visí tremolová kytara s dlouhým echem, nápěv hvízdá člověk
-     * a v posledních taktech nastoupí osamělá trubka se sborem.
+     * Poušť – **western**: jízda plání ve dvoučtvrťovém taktu. Kopyta cválají
+     * „DUM-ta-ka“, basa s kytarou drží „bum-ča“, nápěv vede tremolová kytara
+     * a nahoře se k ní přidá hvízdání a trubka.
      *
      * Prostředí je Sonora (kaktusy, stolové hory, supi), ne Sahara – proto
-     * western, a ne orientální drón. Ten se tu kdysi zkoušel a zněl spíš jako
-     * harmonika než jako poušť.
+     * jízda plání, a ne orientální drón. Ten se tu kdysi zkoušel a zněl spíš
+     * jako harmonika než jako poušť.
      *
-     * Hraje se v **6/8** (`stepsPerBar: 12`), protože cval je trojdobý;
-     * je to jediné téma ve hře, které se nepočítá na čtyři.
-     *
-     * Harmonie je mollová a stojí na **andaluském sestupu** i–VII–VI–V
-     * (0–10–8–7 půltónů) – ta klesající linka je celý western; durová
-     * kadence z pouště dělala veselou zábavu na náměstí.
+     * Harmonie je **kovbojská, ne mollová**: I–♭VII–IV (0–10–5 půltónů), tedy
+     * durový základ se sníženou sedmičkou. Právě ta ♭VII zní jako Amerika;
+     * čistá moll z toho dělala Leoneho drama a čistá dur zase veselou zábavu
+     * na náměstí. Akordy kytary jsou **prázdné kvinty** (bez tercie), takže
+     * sedí i pod mollovými stupnicemi vyšších levelů a zní jako širá pláň.
      */
     audio() {
         return {
             arrange: 'desert',
             melody: 'western',
-            stepsPerBar: 12,    // 6/8 – cval má tři doby, ne čtyři
-            // Tempo se násobí rychlostí levelu, takže z tohohle základu vyjde
-            // klidná jízda na třetím levelu a trysk na šestnáctém
-            bpm: 116,
-            scales: [SCALE.aeolian, SCALE.dorian, SCALE.harmonic, SCALE.phrygian],
+            // Doba je čtvrtka (čtyři kroky), takže tohle číslo rovnou znamená
+            // čtvrtky za minutu. Zní to jako moc, ale takt je dvoučtvrťový:
+            // v uších z toho podle rychlosti levelu vyjde 134 až 228 celých
+            // taktů „bum-ČA“ za minutu, tedy trysk. Poloviční tempo se
+            // zkoušelo a znělo jako klusající povoz.
+            bpm: 120,
+            scales: [SCALE.major, SCALE.mixolydian, SCALE.dorian, SCALE.aeolian],
             progressions: [
-                [0, 0, 10, 10, 8, 8, 7, 7],     // andaluský sestup i–VII–VI–V
-                [0, 0, 8, 8, 10, 10, 0, 0],
-                [0, 10, 0, 10, 8, 8, 7, 0],
-                [0, 0, 5, 5, 10, 10, 7, 7],
+                [0, 0, 10, 10, 5, 5, 0, 0],     // I–♭VII–IV–I, kovbojský obrat
+                [0, 0, 5, 5, 0, 0, 7, 7],
+                [0, 10, 0, 10, 5, 5, 7, 0],
+                [0, 0, 7, 7, 10, 10, 0, 0],
             ],
             roots: [2, 5, 7, 0],
-            chord: [0, 3, 7, 12],           // mollový akord kytary
-            chordSeventh: [0, 4, 7, 10],    // dur se septimou na V – konec andaluské kadence
+            chord: [0, 7, 12, 19],          // prázdné kvinty – bez tercie, jako pláň
+            chordSeventh: [0, 7, 10, 12],   // na dominantě přibude septima
             cutoff: [1500, 3000, 5600],     // suché, ne sklovité
-            // Kapela bez bicích je tišší než témata s bubny – vyrovnané je to
-            // hlasitostí, ne dalším nástrojem (měří `tools/mixtest.mjs`)
-            gain: [0.56, 0.70, 0.88],
+            gain: [0.56, 0.70, 0.86],
             leadGain: 0.62,
-            // Dlouhá ozvěna: tón musí mít na prázdné pláni kam odletět
-            delay: {steps: 4, feedback: 0.34, mix: 0.32},
+            // **Bez ozvěny** – jediné téma ve hře, které ji nemá. V tomhle
+            // tempu se tóny sypou tak hustě, že se i slabý slapback s nápěvem
+            // slil v kaši; prostor tady místo něj drží dusot kopyt.
+            delay: {steps: 3, feedback: 0, mix: 0},
         };
     }
 }
