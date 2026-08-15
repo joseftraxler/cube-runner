@@ -48,7 +48,7 @@ const LOOKAHEAD = 0.15;
 
 // Stupnice jako půltóny od základního tónu. Až na poušť samé mollové – kvůli
 // atmosféře; mariachi je jediné téma, které má znít vesele, a to bez dur nejde.
-const SCALE = {
+export const SCALE = {
     pentatonic: [0, 3, 5, 7, 10],           // mollová pentatonika
     aeolian: [0, 2, 3, 5, 7, 8, 10],        // přirozená moll
     harmonic: [0, 2, 3, 5, 7, 8, 11],       // harmonická moll – zvětšená sekunda
