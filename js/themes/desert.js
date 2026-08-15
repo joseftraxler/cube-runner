@@ -335,10 +335,20 @@ export class Desert extends Theme
 
         // Občas kaktus kvete
         if (seed < 0.28) {
+            ctx.strokeStyle = '#aa0000';
             ctx.fillStyle = '#ff6f91';
             ctx.beginPath();
-            ctx.arc(cx, top - t * 0.02, width * 0.34, 0, TAU);
+            ctx.ellipse(cx, top - t * 0.10, width * 0.60, width * 0.20, 0, 0, TAU);
             ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(cx, top - t * 0.13, width * 0.45, width * 0.25, 0, 0, TAU);
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(cx, top - t * 0.15, width * 0.15, width * 0.30, 0, 0, TAU);
+            ctx.fill();
+            ctx.stroke();
         }
 
         ctx.lineCap = 'butt';

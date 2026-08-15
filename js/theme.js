@@ -34,6 +34,9 @@ export class Theme {
     // ---- Zkratky do hry ----
     // Téma kreslí do plátna hry a v jejích souřadnicích, takže by se jinak
     // každý tah psal přes `this.game.…`.
+    /**
+     * @returns {CanvasRenderingContext2D}
+     */
 
     get ctx() {
         return this.game.ctx;
