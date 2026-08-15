@@ -66,3 +66,6 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register(new URL('../sw.js', import.meta.url)).catch(() => {});
     });
 }
+
+// cubeRunner.levelIndex = 10;   // o dvě míň, než chceš
+// cubeRunner.nextLevel();       // posune na 17, vynuluje pokusy i postup

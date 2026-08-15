@@ -13,14 +13,16 @@
  * (Kdyby gradace běžela na čas, nebyla by v praxi slyšet – po většinu pokusů
  * kostka umře dřív, než by skladba stihla nastoupit.)
  *
- * **Každé téma prostředí má vlastní motiv** (`THEMES`): jinou stupnici, harmonii,
- * tempo, nástroje i rytmus. Beztémové levely drží temné synthwave, led hraje
- * pomalé zvonky nad ležícím podkladem, oheň dusá chraplavým riffem, poušť
- * zní jako mexické mariachi – guitarrón, vihuela a dvojice trubek v terciích –,
- * matematický svět běží minimalisticky (metronom, skleněné tóny, souměrné
- * stupnice a melodická buňka, která se proti taktu posouvá) a džungle je africký
- * bubnový kruh: kovový zvonec drží linku, djembe hrají do jejích mezer, balafon
- * na to skládá ostinato a nad vším zpívá sbor hlasů.
+ * **Každé téma prostředí má vlastní motiv** – jinou stupnici, harmonii, tempo,
+ * nástroje i rytmus. Motiv si ale drží prostředí (`Theme.audio()` v `js/themes/`),
+ * ne zvuk: tady je **jak se hraje** (nástroje a aranžmá), tam **co se hraje**.
+ * Beztémové levely drží temné synthwave, led hraje pomalé zvonky nad ležícím
+ * podkladem, oheň dusá chraplavým riffem, poušť zní jako mexické mariachi –
+ * guitarrón, vihuela a dvojice trubek v terciích –, matematický svět běží
+ * minimalisticky (metronom, skleněné tóny, souměrné stupnice a melodická buňka,
+ * která se proti taktu posouvá) a džungle je africký bubnový kruh: kovový zvonec
+ * drží linku, djembe hrají do jejích mezer, balafon na to skládá ostinato
+ * a nad vším zpívá sbor hlasů.
  *
  * Dramatický ráz drží všechna témata kromě pouště – **mariachi je schválně
  * veselé**, hraje v dur na I–IV–V a nesnaží se o napětí. Mollová kadence
@@ -31,7 +33,7 @@
  * čísla levelu, takže je pokaždé stejná.
  *
  * `Game` zvuku jen říká, co se stalo (`play('jump')`), jestli má hrát hudba
- * (`setMusicOn`) a jaké je téma levelu (`setTrack`). Zvuk sám o hře nic neví.
+ * (`setMusicOn`) a jaký motiv má hrát (`setTrack`). Zvuk sám o hře nic neví.
  */
 
 const STORAGE_KEY = 'cube-runner-muted';
@@ -48,7 +50,7 @@ const LOOKAHEAD = 0.15;
 
 // Stupnice jako půltóny od základního tónu. Až na poušť samé mollové – kvůli
 // atmosféře; mariachi je jediné téma, které má znít vesele, a to bez dur nejde.
-const SCALE = {
+export const SCALE = {
     pentatonic: [0, 3, 5, 7, 10],           // mollová pentatonika
     aeolian: [0, 2, 3, 5, 7, 8, 10],        // přirozená moll
     harmonic: [0, 2, 3, 5, 7, 8, 11],       // harmonická moll – zvětšená sekunda
@@ -73,179 +75,6 @@ const SCALE = {
  * harmonie matematického světa.
  */
 const JUST_MINOR = [1, 6 / 5, 3 / 2, 2];
-
-/**
- * Motivy podle tématu prostředí. Každý drží stupnice, harmonie, základní tóny,
- * tempo, nastavení filtru a dozvuku a jméno aranžmá (`arrange`), podle kterého
- * `#playStep` vybere, čím a jak se hraje. Uvnitř tématu se pole indexují číslem
- * levelu, takže dva levely stejného tématu nezní stejně – proto mají čtyři prvky.
- */
-const THEMES = {
-    // Levely bez tématu – temné synthwave, jak hra zněla od začátku
-    default: {
-        arrange: 'synth',
-        melody: 'synth',
-        bpm: 122,
-        scales: [SCALE.pentatonic, SCALE.aeolian, SCALE.harmonic, SCALE.phrygian],
-        progressions: [
-            [0, 0, 8, 7, 0, 0, 5, 7],
-            [0, 10, 8, 7, 0, 10, 5, 3],
-            [0, 0, 3, 5, 0, 0, 8, 7],
-            [0, 5, 3, 10, 0, 5, 8, 7],
-        ],
-        roots: [0, 3, 5, 7, 10],
-        chord: [0, 3, 7, 12],       // mollový akord pro údery
-        arp: [0, 3, 7, 12],
-        cutoff: [1300, 2800, 4800], // otevření filtru pro jednotlivé stupně (Hz)
-        gain: [0.45, 0.58, 0.72],   // hlasitost podkladu – skladba i sílí, nejen se rozjasňuje
-        leadGain: 0.55,
-        delay: {steps: 3, feedback: 0.34, mix: 0.45},
-    },
-
-    // Ledová jeskyně – pomalé zvonky, ležící plocha, praskání ledu místo virblu
-    ice: {
-        arrange: 'ice',
-        melody: 'bells',
-        bpm: 100,
-        scales: [SCALE.kumoi, SCALE.aeolian, SCALE.inSen, SCALE.harmonic],
-        progressions: [
-            [0, 0, 8, 8, 5, 5, 3, 3],
-            [0, 0, 0, 0, 10, 10, 7, 7],
-            [0, 0, 5, 5, 3, 3, 10, 10],
-            [0, 0, 7, 7, 8, 8, 3, 3],
-        ],
-        roots: [3, 8, 5, 10],
-        chord: [0, 3, 7, 10, 14],   // mollová nóna – rozlehlá a studená
-        arp: [0, 3, 7, 12],
-        cutoff: [2000, 3800, 7000], // sklo se leskne i v klidu
-        gain: [0.52, 0.62, 0.72],   // řídké aranžmá potřebuje víc hlasitosti než hustá
-        leadGain: 0.50,
-        delay: {steps: 6, feedback: 0.52, mix: 0.60},   // dlouhá ozvěna jeskyně
-    },
-
-    // Sopečná sloj – chraplavá basa, dvojkopák, opakovaný riff a uhlíky v pozadí
-    fire: {
-        arrange: 'fire',
-        melody: 'riff',
-        bpm: 142,
-        scales: [SCALE.phrygian, SCALE.locrian, SCALE.hijaz, SCALE.blues],
-        progressions: [
-            [0, 0, 1, 0, 0, 0, 6, 7],
-            [0, 1, 0, 6, 0, 1, 8, 7],
-            [0, 0, 0, 3, 0, 0, 1, 6],
-            [0, 3, 1, 0, 0, 3, 6, 1],
-        ],
-        roots: [0, 2, 1, 3],        // nízko, ať to duní
-        chord: [0, 7, 12],          // kvintakord bez tercie – hrubá síla
-        arp: [12, 8, 7, 3],
-        cutoff: [1200, 2600, 5200],
-        gain: [0.50, 0.64, 0.78],
-        leadGain: 0.45,
-        delay: {steps: 2, feedback: 0.18, mix: 0.25},   // těsná ozvěna, ať se riff nerozmaže
-    },
-
-    /**
-     * Poušť – mexické mariachi, jak se hraje na náměstí: guitarrón, vihuela,
-     * dvojice trubek v terciích a housle. **Jediné téma ve hře, které stojí
-     * v dur a nemá být dramatické** – ranchera je veselá, a mollová kadence
-     * z ní dělala něco mezi flamencem a filmovou hudbou.
-     *
-     * Harmonie je proto I–IV–V (0–5–7 půltónů) a nic víc; mollová šestka ani
-     * snížená sedmička sem nepatří.
-     */
-    desert: {
-        arrange: 'desert',
-        melody: 'mariachi',
-        bpm: 116,
-        scales: [SCALE.major, SCALE.majorPenta, SCALE.majorHexa, SCALE.major],
-        // Tercie druhé trubky se harmonizují po durové stupnici, i když melodie
-        // běží po pentatonice – ta některé stupně nemá a vyšla by z toho kvarta
-        harmony: SCALE.major,
-        progressions: [
-            [0, 0, 7, 7, 0, 0, 5, 7],
-            [0, 0, 5, 5, 7, 7, 0, 0],
-            [0, 5, 0, 7, 0, 5, 7, 0],
-            [0, 0, 0, 7, 5, 5, 7, 0],
-        ],
-        roots: [2, 5, 7, 0],
-        chord: [0, 4, 7, 12],           // durový akord vihuely
-        chordSeventh: [0, 4, 7, 10],    // dominantní septakord na V – motor ranchery
-        cutoff: [1900, 3600, 6400],     // žestě potřebují prostor nahoře
-        // Kapela bez bubeníka je tišší než témata s bicími – vyrovnané je to
-        // hlasitostí, ne dalším nástrojem (měří `tools/mixtest.mjs`)
-        gain: [0.56, 0.70, 0.88],
-        leadGain: 0.60,
-        delay: {steps: 3, feedback: 0.18, mix: 0.22},   // jen náznak ozvěny náměstí
-    },
-
-    /**
-     * Matematický svět – minimalistický běh šestnáctin: metronom místo bicích,
-     * čisté sinusové tóny a melodická buňka nesoudělné délky, která se proti
-     * taktu postupně posouvá. Stupnice jsou souměrné (celotónová a zmenšená se
-     * zobrazí samy na sebe po posunu) a harmonie krouží po velkých a malých
-     * terciích a po kvintách – všechno jsou to pravidelné dělení oktávy.
-     *
-     * Pole mají pět prvků, protože matematických levelů je pět (11–15) a každý
-     * z nich má sáhnout na jinou stupnici, harmonii i základní tón.
-     * `chord` tenhle motiv nemá schválně: akord hraje `#ratioChord`
-     * v přirozeném ladění, ne v půltónech.
-     */
-    math: {
-        arrange: 'math',
-        melody: 'phase',
-        bpm: 128,
-        scales: [SCALE.wholeTone, SCALE.dorian, SCALE.octatonic, SCALE.pentatonic,
-                 SCALE.aeolian],
-        progressions: [
-            [0, 0, 4, 4, 8, 8, 4, 4],       // velké tercie – dělení oktávy na tři
-            [0, 7, 2, 9, 4, 11, 6, 1],      // kvintový kruh
-            [0, 0, 3, 3, 6, 6, 9, 9],       // malé tercie – dělení oktávy na čtyři
-            [0, 5, 10, 3, 8, 1, 6, 11],     // kvartový kruh (kvintový pozpátku)
-            [0, 0, 8, 8, 5, 5, 10, 10],
-        ],
-        roots: [0, 5, 3, 8, 10],
-        arp: [0, 7, 12, 7],
-        cutoff: [1600, 3200, 6200],
-        gain: [0.48, 0.60, 0.74],
-        leadGain: 0.52,
-        delay: {steps: 4, feedback: 0.40, mix: 0.42},   // ozvěna prázdné posluchárny
-    },
-
-    /**
-     * Džungle – bubnový kruh: dvouzvučný zvonec drží zvonovou linku, do jejích
-     * mezer se zaklesnou djembe (tři různé údery) a chřestidlo, balafon na to
-     * hraje ostinato a nad vším zpívá sbor hlasů, kterému odpovídá píšťala.
-     *
-     * Harmonie se skoro nehne (modální kolébání mezi základem a septimou) –
-     * tah drží rytmus, ne akordy, a proto se i basa opírá o doby zvonce.
-     *
-     * Pole mají pět prvků, ať se pět džunglových levelů netrefí do stejného
-     * motivu (hlídá `check_theme_variety()` v generátoru).
-     */
-    jungle: {
-        arrange: 'jungle',
-        melody: 'ostinato',
-        bpm: 100,
-        scales: [SCALE.pentatonic, SCALE.dorian, SCALE.kumoi, SCALE.aeolian,
-                 SCALE.blues],
-        progressions: [
-            [0, 0, 10, 10, 0, 0, 5, 5],
-            [0, 0, 5, 5, 10, 10, 7, 7],
-            [0, 10, 0, 10, 3, 3, 10, 10],
-            [0, 0, 3, 3, 10, 10, 5, 5],
-            [0, 7, 10, 7, 0, 7, 3, 3],
-        ],
-        roots: [0, 5, 3, 10, 7],
-        chord: [0, 3, 7, 12],       // mollový akord pro sbor hlasů
-        arp: [0, 5, 7, 12],
-        cutoff: [1700, 3400, 6400], // slapy a chřestidlo potřebují výšky
-        // Bubnový kruh musí znít plně, ne uctivě – proto o kus hlasitěji než
-        // řídké motivy (odchylku hlídá `tools/mixtest.mjs`)
-        gain: [0.50, 0.62, 0.74],
-        leadGain: 0.54,
-        delay: {steps: 3, feedback: 0.24, mix: 0.24},   // ozvěna mezi kmeny, ne mlha
-    },
-};
 
 /**
  * Zvonová linka západoafrických bubnových kruhů převedená do šestnáctin –
@@ -486,7 +315,6 @@ export class Sound {
      */
     #buildGraph() {
         const ctx = this.ctx;
-        const base = THEMES.default;
 
         this.master = ctx.createGain();
         this.master.gain.value = this.muted ? 0 : 1;
@@ -495,25 +323,27 @@ export class Sound {
         // Dolní propust drží klidnou půlku smyčky přidušenou, v nástupu se otevře
         this.filter = ctx.createBiquadFilter();
         this.filter.type = 'lowpass';
-        this.filter.frequency.value = base.cutoff[0];
+        // Čísla jsou jen výchozí stav grafu – hned po sestavení je podle motivu
+        // právě načteného levelu přepíše `#applyTrack()`
+        this.filter.frequency.value = 1300;
         this.filter.Q.value = 1.2;
         this.filter.connect(this.master);
 
         this.musicGain = ctx.createGain();
-        this.musicGain.gain.value = base.gain[0];
+        this.musicGain.gain.value = 0.45;
         this.musicGain.connect(this.filter);
 
         this.leadGain = ctx.createGain();
-        this.leadGain.gain.value = base.leadGain;
+        this.leadGain.gain.value = 0.55;
         this.leadGain.connect(this.filter);
 
         // Dozvuk melodie – z pár tónů udělá prostor
         this.delay = ctx.createDelay(1.5);
         this.delay.delayTime.value = 0.25;
         this.feedback = ctx.createGain();
-        this.feedback.gain.value = base.delay.feedback;
+        this.feedback.gain.value = 0.34;
         this.delayGain = ctx.createGain();
-        this.delayGain.gain.value = base.delay.mix;
+        this.delayGain.gain.value = 0.45;
 
         this.leadGain.connect(this.delay);
         this.delay.connect(this.feedback).connect(this.delay);
@@ -537,10 +367,12 @@ export class Sound {
 
     /**
      * Nastaví skladbu levelu a vrátí sekvencer na začátek (po každé smrti).
-     * `theme` je vizuální téma levelu – vybírá se podle něj celý motiv.
+     * `profile` je motiv, který si drží prostředí levelu (`Theme.audio()`):
+     * stupnice, harmonie, základní tóny, tempo a jména aranžmá a stylu melodie.
+     * Pole se v něm indexují číslem levelu, takže dva levely téhož světa
+     * nezahrají totéž.
      */
-    setTrack(levelIndex, speedPct, theme = null) {
-        const profile = THEMES[theme] ?? THEMES.default;
+    setTrack(levelIndex, speedPct, profile) {
         const scale = profile.scales[levelIndex % profile.scales.length];
         const prog = profile.progressions[levelIndex % profile.progressions.length];
         const random = rng(levelIndex * 2654435761 + 12345);
