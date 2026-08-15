@@ -144,6 +144,16 @@ npx serve
 
 Poté otevři `http://localhost:8000` v prohlížeči.
 
+```bash
+# Docker
+docker compose up
+```
+
+Compose spustí nginx (`docker/nginx.conf`) nad kořenem repozitáře a hra běží
+na `http://localhost:8080`. Soubory jsou do kontejneru jen připojené pro čtení,
+takže se úprava projeví po obnovení stránky – přestavovat nic není potřeba.
+Jiný port nastavíš levým číslem v `ports` v `docker-compose.yml`.
+
 ## Instalace (PWA)
 
 Hra je progresivní webová aplikace – z prohlížeče ji lze **nainstalovat** (na ploše
