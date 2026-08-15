@@ -37,11 +37,12 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
 
 ## Architektura a klíčový princip
 
-**Vazba jde jen jedním směrem: `Game` řídí, entity se starají samy o sebe.**
+**Vazba jde jen jedním směrem: `Game` řídí, entity i prostředí se starají samy
+o sebe.**
 
 - `Game` (`js/game.js`) orchestruje hru: herní smyčka, stavy, kamera, kolize
-  s překážkami, mince, skóre, vykreslení prostředí (bloky, hroty, portály, HUD)
-  a rozhodnutí, **kam** se entita vykreslí.
+  s překážkami, mince, skóre, vykreslení věcí společných všem světům (prstence,
+  portály, plošiny, mince, cíl, HUD) a rozhodnutí, **kdy a kam** se co vykreslí.
 - Entity (`js/entities/`) **nesmí ovládat hru**. Nemění skóre ani stav hry.
   Do světa jen *nahlížejí* kvůli vlastnímu pohybu (`this.game.level` kvůli
   blokům). `Player` si řeší svoji fyziku a náraz do zdi jen ohlásí příznakem
@@ -50,9 +51,24 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
   `animPhase`. `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/
   `Orbiter` ji implementují a **nesahají na `this.game`** – dostanou kontext
   i pozici parametrem. Tuhle nezávislost `draw` na hře zachovej.
+- **Prostředí je třída, ne podmínka.** Každé téma má vlastní soubor
+  v `js/themes/` a je to potomek `Theme` (`js/theme.js`): říká o sobě odstín
+  (`hue`), jestli je v něm horko (`hazy`, `hazeAmplitude`) a jak se jmenuje
+  (`name`), kreslí všechno, co se tématem mění (`drawBackground`,
+  `drawForeground`, `drawGroundLine`, `paintBlock`, `drawSpikeUp`/`drawSpikeDown`,
+  `decorateRing`, `decorateCoin`) a vrací motiv hudby (`audio`). `Game` si
+  prostředí drží v `this.theme` (staví ho `themeFor` v `js/themes/registry.js`)
+  a **nikde se nevětví podle jména tématu** – jediné místo, kde se jméno na třídu
+  převádí, je ten registr. Nová podmínka `if (theme === …)` v `game.js` znamená,
+  že v `Theme` chybí metoda.
+  Sama `Theme` je zároveň prostředí levelů bez tématu (tmavá obloha s mřížkou,
+  prosté bloky, rudé hroty, synthwave), takže si každý svět přepisuje jen to,
+  čím se liší. Vazba je stejná jako u entit: **téma hru neřídí**, jen do ní
+  nahlíží zkratkami (`this.tile`, `this.px`, `this.level`) a kreslí.
 - **Svět kreslí `Game.drawWorld`, HUD a překryv až po něm.** Horká témata
-  (`Game.hazy` – ohnivé a pouštní) nechají hotový obraz rozvlnit horkým vzduchem
-  (`drawHeatHaze`) – texty se tím vlnit nesmí.
+  (`Theme.hazy` – ohnivé a pouštní) nechají hotový obraz rozvlnit horkým vzduchem
+  (`Game.drawHeatHaze`, sílu vlnění říká `Theme.hazeAmplitude`) – texty se tím
+  vlnit nesmí.
   Ozdoby závislé na místě (námraza, fáze plamenů, tvar kaktusu) počítej
   z `noise(x, y)`, ne z `Math.random()`, jinak budou při posunu kamery
   poskakovat.
@@ -62,14 +78,14 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
   (`drawBackdrop`). Mezipaměti platí pro téma, odstín a velikost políčka –
   zahazuje je `#dropStaleCaches` v `resize()`. Přibude-li kresba, která se
   mění každý snímek, patří mimo ně.
-- **Matematické symboly se rýsují čarami (`mathGlyph`), ne písmem.** Znaky jako
-  ∑ nebo ∮ nemá každé zařízení ve fontu a místo symbolu by se ukázal prázdný
-  obdélníček; rýsovaný tah navíc sedí k papíru v pozadí. Obrazce v pozadí
-  (`drawMathFigures`) drží malý parallax a bledou barvu – pozadí má být hloubka,
-  ne rozptýlení, překážky musí zůstat čitelné na první pohled.
+- **Matematické symboly se rýsují čarami (`mathGlyph` v `js/themes/math.js`),
+  ne písmem.** Znaky jako ∑ nebo ∮ nemá každé zařízení ve fontu a místo symbolu
+  by se ukázal prázdný obdélníček; rýsovaný tah navíc sedí k papíru v pozadí.
+  Obrazce v pozadí (`drawFigures`) drží malý parallax a bledou barvu – pozadí má
+  být hloubka, ne rozptýlení, překážky musí zůstat čitelné na první pohled.
 - **Pozadí nesmí zaplnit propast.** Díra v podlaze je smrtelná, takže pod
   úrovní země patří tma – pouštní duny proto končí u horní hrany podlahy
-  a zbytek plátna `drawDesert` přetře natmavo.
+  a zbytek plátna `Desert.drawBackground` přetře natmavo.
 - **Prvky mapy vyhodnocuje `Game`, ne `Player`.** Odrazovou plošinu a gravitační
   portál řeší `Game.applyTriggers` (volá `player.jump(PAD_BOOST)`, přepíná
   `player.gravity`), prstenec `Game.tryJump`. Kostka o nich nic neví.
@@ -83,6 +99,7 @@ co se v prohlížeči děje. Generátor běží na čistém Pythonu 3, bez balí
 
 Ostatní moduly: `level.js` (parsování mapy), `physics.js` (konstanty pohybu),
 `input.js` (mapování kláves na akce), `audio.js` (zvuk), `haptics.js` (vibrace),
+`draw.js` (sdílené pomůcky pro kreslení – `noise`, `wrap`, `TAU`),
 `scripts.js` (bootstrap – canvas, seznam levelů, ovládání, spuštění).
 
 Instance hry visí na `window.cubeRunner` – sahá po ní ladění v konzoli i nástroje
@@ -157,7 +174,9 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   `S` pila, `@` koule na řetězu, `J` odrazová plošina, `o` skokový prstenec,
   `D`/`U` gravitační portál (dolů/vzhůru), `*` mince, `P` start, `F` cíl,
   mezera = prázdno.
-- místo čísla jde předat `{speed, theme}`; téma `'ice'` kreslí hroty jako modré
+- místo čísla jde předat `{speed, theme}`; jméno tématu si `Game` vymění za
+  třídu prostředí (`js/themes/`), takže **kresba i hudba světa jsou v jednom
+  souboru**. Téma `'ice'` kreslí hroty jako modré
   krápníky, bloky jako namrzlé a nechá v pozadí padat sníh, téma `'fire'` mění
   hroty ze země v pohyblivé plameny, hroty ze stropu v malé sopky, pod mapu dá
   lávovou řeku a celý obraz rozvlní horkým vzduchem, téma `'desert'` staví místo
@@ -172,8 +191,8 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   a do pozadí dá koruny stromů s pruhy světla, kmeny v mlze, houpající se liány
   a světlušky. Rudá tlama a jantarové pruhy jsou v zeleném prostředí schválně:
   zelená rostlina by splynula s pozadím a nebylo by poznat, co zabíjí.
-  Téma navíc určuje **motiv hudby** (`THEMES` v `audio.js`) – na fyziku ani
-  hitboxy ale nesahá. Drží je `LEVEL_THEMES` v generátoru.
+  Téma navíc určuje **motiv hudby** (`Theme.audio()`) – na fyziku ani hitboxy
+  ale nesahá. Přiřazení témat levelům drží `LEVEL_THEMES` v generátoru.
 - **Světy se po hře střídají, nejdou po blocích.** Prostředí se přiřazuje
   nezávisle na tom, z jaké kapitoly jsou úseky levelu: hráč tak vidí všechna
   prostředí od začátku a žádná část hry nevypadá dlouho stejně. Úseky se ale
@@ -182,10 +201,11 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   vznikly. Bez tématu zůstávají levely 1, 8 a 15 – i „žádné téma“ je prostředí
   a taky se střídá.
 - **Dva levely stejného tématu si nesmí sáhnout na tentýž motiv.** Hudba vybírá
-  obměnu jako `levelIndex % počet` (`Sound.setTrack`) a `Game.hue` odvozuje
+  obměnu jako `levelIndex % počet` (`Sound.setTrack`) a `Theme.hue` odvozuje
   z čísla levelu i odstín, takže třeba dva ledové levely se stejným zbytkem
   by zněly i vypadaly úplně stejně. Hlídá to `check_theme_variety()`
-  v generátoru – jeho `THEME_VOICES` musí sedět s poli v `THEMES`.
+  v generátoru – jeho `THEME_VOICES` musí sedět s poli, která vrací
+  `Theme.audio()`.
 
 Mince jsou nepovinné, level končí doběhnutím k `F`. Prostor mimo mapu není pevný –
 díra v podlaze je smrtelný pád. `Level.viewTop` počítá, odkud nahoře už je jen
@@ -298,6 +318,19 @@ když se rozejdou, playtest spadne.
 3. Naimportuj a přidej do pole `levels` v `js/scripts.js`. Pořadí = pořadí ve hře.
 4. Přidej soubor do `ASSETS` v `sw.js` a zvyš verzi `CACHE`.
 
+### Přidání prostředí
+
+1. Založ `js/themes/<jméno>.js` s potomkem `Theme` – povinné je jen `name()`,
+   zbytek přepiš jen tam, kde se svět liší od výchozího vzhledu.
+2. Zapiš ho do `THEMES` v `js/themes/registry.js` (jediné místo, kde se jméno
+   z mapy převádí na třídu).
+3. Doplň téma do `LEVEL_THEMES` a jeho počet obměn do `THEME_VOICES`
+   v `tools/gen_levels.py` – ten pak ohlídá, že si dva levely téhož světa
+   nesáhnou na stejný motiv.
+4. Přidej soubor do `ASSETS` v `sw.js` a zvyš verzi `CACHE`.
+5. Pusť `node tools/mixtest.mjs` (hlasitost motivu proti ostatním)
+   a `node tools/perftest.mjs` (cena snímku).
+
 ## Zvuk
 
 `js/audio.js` (třída `Sound`) skládá efekty i hudbu za běhu přes Web Audio API –
@@ -309,9 +342,10 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
   ne v herní smyčce – jinak by při propadu snímků vynechávala.
-- **Každé téma prostředí má vlastní motiv** – drží ho `THEMES` (stupnice,
-  harmonie, základní tóny, tempo, akord, filtr, dozvuk) a k němu dvojice
-  „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
+- **Každé téma prostředí má vlastní motiv** – drží ho ale **prostředí**
+  (`Theme.audio()` v `js/themes/`), ne zvuk: v `audio.js` je *jak* se hraje
+  (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
+  tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
   basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, vihuela,
   dvojice trubek v terciích, housle a zapateado), `math` minimalistický běh
@@ -382,8 +416,9 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost
   `cutoff`/`gain` v motivu tématu.
-- `setTrack(levelIndex, speedPct, theme)` vybere motiv podle tématu a z čísla
-  levelu v něm odvodí stupnici, harmonii i základní tón – proto mají pole motivu
+- `setTrack(levelIndex, speedPct, profile)` dostane motiv hotový od prostředí
+  (`Game.loadLevel` mu předá `this.theme.audio()`) a z čísla levelu v něm odvodí
+  stupnici, harmonii i základní tón – proto mají pole motivu
   aspoň tolik prvků, kolik má téma levelů: čtyři u `ice`/`fire`/`desert`
   a **pět u `math` i `jungle`**. Protože se světy po hře střídají, nestačí
   počet: čísla levelů daného tématu musí dávat **různé zbytky** po dělení tím

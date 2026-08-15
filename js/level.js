@@ -15,7 +15,8 @@
  * `'jungle'` mění hroty ze země v masožravé rostliny, hroty ze stropu v hady
  * na liánách, bloky v zarostlé chrámové kvádry a do pozadí dá koruny stromů
  * s pruhy světla, kmeny v mlze, liány a světlušky.
- * Téma je čistě vzhled, hra běží stejně.
+ * Téma je čistě vzhled (a motiv hudby), hra běží stejně. Level si tady drží jen
+ * jeho jméno – co znamená, ví třída prostředí v `js/themes/`.
  *
  * Mapa se čte zleva doprava, kostka běží sama a hráč jen skáče.
  * Legenda znaků:

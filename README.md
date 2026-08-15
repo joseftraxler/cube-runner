@@ -194,15 +194,25 @@ js/
 ├── scripts.js          bootstrap – canvas, ovládání, seznam levelů, spuštění hry
 ├── game.js             Game – herní smyčka, stavy, kolize s překážkami, vykreslování
 ├── level.js            Level – parsování mapy a rychlosti
+├── theme.js            Theme – základ prostředí (vzhled, kresba kulis, motiv hudby)
 ├── audio.js            Sound – syntéza zvukových efektů a hudby (Web Audio)
 ├── haptics.js          Haptics – vibrace telefonu k jednotlivým událostem
 ├── physics.js          fyzikální konstanty (gravitace, skok, velikost kostky)
 ├── input.js            mapování kláves na akce
+├── draw.js             sdílené pomůcky pro kreslení (stálý šum, zbytek po dělení)
 ├── entities/
 │   ├── entity.js       Entity – základ pohyblivého objektu (abstraktní draw)
 │   ├── player.js       Player – fyzika kostky a její vykreslení
 │   ├── saw.js          Saw – rotující pila
 │   └── orbiter.js      Orbiter – koule na řetězu obíhající kolem kotvy
+├── themes/
+│   ├── registry.js     jméno tématu z mapy → třída prostředí
+│   ├── default.js      levely bez tématu – obloha s mřížkou a synthwave
+│   ├── ice.js          Ice – krápníky, námraza, sníh, zvonky
+│   ├── fire.js         Fire – plameny, sopky, láva, horký vzduch
+│   ├── desert.js       Desert – kaktusy, supi, duny, mariachi
+│   ├── math.js         MathTheme – operátory Δ/∇, rýsovací papír, ∮ a π
+│   └── jungle.js       Jungle – masožravé rostliny, hadi, koruny, bubnový kruh
 └── levels/
     └── level1.js … level20.js   definice jednotlivých úrovní
 tools/
@@ -217,6 +227,9 @@ tools/
 
 Zodpovědnosti jsou rozdělené: `Game` řídí hru a entitám říká, kam se mají
 vykreslit, zatímco každá entita se stará jen sama o sebe (svůj pohyb a vzhled).
+Stejně je na tom prostředí: každé téma je vlastní třída v `js/themes/`, která si
+drží svůj odstín, kresbu kulis i motiv hudby – hra se jen ptá, nevětví se podle
+jména tématu.
 
 ## Formát úrovně
 

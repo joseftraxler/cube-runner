@@ -1953,16 +1953,18 @@ LEVEL_THEMES = {
     # (vulturemesa, vulturegap) – jinak by se supi ve hře skoro neobjevili.
 }
 
-# Kolik obměn motivu má které téma v `THEMES` (js/audio.js) – tolik prvků mají
-# jeho pole stupnic, harmonií a základních tónů. Musí sedět s audio.js.
+# Kolik obměn motivu má které téma – tolik prvků mají pole stupnic, harmonií
+# a základních tónů, které vrací `Theme.audio()` (js/theme.js a js/themes/*.js).
+# Musí s nimi sedět.
 THEME_VOICES = {None: 4, 'ice': 4, 'fire': 4, 'desert': 4, 'math': 5, 'jungle': 5}
 
 
 def check_theme_variety():
     """Hlídá, že se dva levely stejného tématu netrefí do stejného motivu.
 
-    Hudba si obměnu vybírá jako `levelIndex % počet` (viz `Sound.setTrack`),
-    takže třeba ledové levely 2 a 6 by zněly úplně stejně. Dokud šla témata
+    Hudba si obměnu vybírá jako `levelIndex % počet` (viz `Sound.setTrack`
+    a motivy v `js/themes/`), takže třeba ledové levely 2 a 6 by zněly úplně
+    stejně. Dokud šla témata
     po blocích, vycházelo to samo; při promíchaných světech na to musí dohlídnout
     tenhle test – jinak by se rozdíl ztratil a nikdo by si toho nevšiml.
     """
