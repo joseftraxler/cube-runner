@@ -17,7 +17,8 @@
  * nástroje i rytmus. Motiv si ale drží prostředí (`Theme.audio()` v `js/themes/`),
  * ne zvuk: tady je **jak se hraje** (nástroje a aranžmá), tam **co se hraje**.
  * Beztémové levely drží temné synthwave, led hraje pomalé zvonky nad ležícím
- * podkladem, oheň dusá chraplavým riffem, poušť je western na dvě doby –
+ * podkladem, oheň dusá chraplavým riffem pod kvintakordy elektrické kytary,
+ * poušť je western na dvě doby –
  * cval koně, „bum-ča“ basa, tremolová kytara a hvízdání –, matematický svět běží
  * minimalisticky (metronom, skleněné tóny, souměrné stupnice a melodická buňka,
  * která se proti taktu posouvá) a džungle je africký bubnový kruh: kovový zvonec
@@ -47,6 +48,18 @@ const TIERS = [0.28, 0.58];
 
 // O kolik dopředu se plánují tóny (s) – kryje výkyvy časovače
 const LOOKAHEAD = 0.15;
+
+/**
+ * Délka kroku (s), pod kterou se aranžmá **prořídí**. Tempo se počítá
+ * z rychlosti levelu, takže rychlé kolo má stejný počet šestnáctin jako pomalé,
+ * ale padají skoro dvakrát hustěji – co na 118 % zní jako chod, je na 205 %
+ * plocha. Aranžmá si podle `fast` zahraje řidčeji, aby zůstal zhruba stejný
+ * počet úderů za vteřinu; hustotu tak řídí obtížnost skladby, ne tempo.
+ *
+ * 0,065 s je zhruba 230 čtvrtek za minutu – ohnivé levely 14 a 19 jsou pod tím,
+ * 4 a 9 nad tím.
+ */
+const FAST_STEP = 0.065;
 
 // Stupnice jako půltóny od základního tónu. Témata sahají po mollových – kvůli
 // atmosféře; durové zůstávají v paletě pro svět, který by měl znít vesele.
@@ -84,6 +97,24 @@ const JUST_MINOR = [1, 6 / 5, 3 / 2, 2];
  * naopak hrají do mezer mezi ní, a z toho vzniká prokládaná polyrytmika.
  */
 const BELL = [0, 3, 6, 8, 11, 14];
+
+/**
+ * Kytarová figura ohně, zapsaná v krocích (šestnáctinách) taktu – doprovod
+ * z ní hraje v každém taktu totéž, takže se za ni ucho chytne i pod riffem.
+ *
+ * `chugs` jsou dusané kvintakordy: jednička, hned za ní šestnáctina (to je ten
+ * tah dopředu) a pak až šestnáctina za třetí dobou. Druhá doba zůstává prázdná
+ * schválně – tam je slyšet riff. `run` je stoupavý běh po strunách na čtvrtou
+ * dobu, který vtáhne do dalšího taktu; čísla jsou pořadí struny v akordu
+ * (`profile.chord`), tedy základ – kvinta – oktáva.
+ *
+ * Platí pro pomalé levely; na rychlých (`fast`) hraje kytara řidčeji, viz
+ * `#arrangeFire`.
+ */
+const FIRE_FIGURE = {
+    chugs: [0, 3, 9, 15],
+    run: {12: 0, 13: 1, 14: 2},
+};
 
 /**
  * Nápěvy westernu – **hotová dvojtaktí**, ne rytmus k vyplnění náhodnými tóny.
@@ -128,6 +159,23 @@ const DIST_CURVE = (() => {
     const curve = new Float32Array(size);
     for (let i = 0; i < size; i++) {
         curve[i] = Math.tanh((i / (size - 1) * 2 - 1) * 4);
+    }
+    return curve;
+})();
+
+/**
+ * Křivka kytarového aparátu: tvrdší a hlavně **nesouměrné** oříznutí (spodní
+ * půlvlna se ořízne dřív než horní). Nesouměrnost přidá sudé harmonické, díky
+ * kterým zkreslení zní dřevěně jako elektronka; souměrné oříznutí dává jen
+ * liché harmonické a z toho je čtvercová vlna, ne kytara. Stejnosměrnou složku,
+ * která tím vznikne, odvede horní propust v `#cabinet`.
+ */
+const AMP_CURVE = (() => {
+    const size = 2048;
+    const curve = new Float32Array(size);
+    for (let i = 0; i < size; i++) {
+        const x = i / (size - 1) * 2 - 1;
+        curve[i] = x >= 0 ? Math.tanh(x * 2.4) : Math.tanh(x * 3.4) * 0.85;
     }
     return curve;
 })();
@@ -509,7 +557,7 @@ export class Sound {
         this.tier = tier;
 
         // Aranžmá si podle tématu vybere nástroje i rytmus
-        const bit = {t, root, bar, inBar, step, tier, when};
+        const bit = {t, root, bar, inBar, step, tier, when, fast: t.stepDur < FAST_STEP};
         switch (profile.arrange) {
             case 'ice': this.#arrangeIce(bit); break;
             case 'fire': this.#arrangeFire(bit); break;
@@ -600,24 +648,71 @@ export class Sound {
 
     /**
      * Oheň: dvojkopák, chraplavá basa na šestnáctiny a riff, který se opakuje.
-     * Údery jsou kvintakordy bez tercie a v pozadí praskají uhlíky.
+     * Přes to hraje **elektrická kytara kvintakordy** (`#guitar`) v synkopované
+     * figuře zakončené během po strunách (`FIRE_FIGURE`). Basa drží tah,
+     * kytara přidává chraplavý střed; v pozadí praskají uhlíky.
+     *
+     * Kytary jsou tři a **každá v jiné poloze**, jinak by si lezly do cesty:
+     * doprovod drží figuru uprostřed, úder (`#powerStab`) se opře do jedničky
+     * o oktávu výš a v nejvyšším stupni nad tím ještě jede klesající lick.
+     *
+     * **Rychlý level (`fast`, viz `FAST_STEP`) se hraje na polovinu.** Tempo
+     * roste s rychlostí levelu, takže na 205 % by za vteřinu zaznělo skoro
+     * dvakrát tolik not co na 118 % a byla by z toho plocha. Půlí se proto
+     * mřížka: kopák drží půlové doby, basa čtvrtky, riff a lick osminky,
+     * kytara zahraje jen akord na jedničku. Vypadává všechno, co takt drobí –
+     * dvojkopák, virbl, nájezd, činel i běh po strunách –, takže rychlá kola
+     * jsou vzdušná a řídká, ne hustší.
      */
-    #arrangeFire({t, root, bar, inBar, step, tier, when}) {
-        // ---- bicí: tvrdý kopák, ve vyšších stupních cval ----
-        if (inBar % 4 === 0) this.#kick(when, {top: 200, bottom: 36, dur: 0.13, gain: 0.72});
-        if (tier >= 1 && inBar % 8 === 3) this.#kick(when, {top: 190, bottom: 36, dur: 0.1, gain: 0.5});
-        if (tier >= 2 && inBar % 8 === 7) this.#kick(when, {top: 190, bottom: 36, dur: 0.1, gain: 0.5});
-        if (tier >= 1 && inBar % 8 === 4) this.#snare(when, true);
-        if (tier >= 1) this.#hat(when, tier >= 2 && inBar === 14);
+    #arrangeFire({t, root, bar, inBar, step, tier, when, fast}) {
+        /*
+         * ---- bicí: rocková souprava ----
+         * Nájezd na konci smyčky (tomy dolů) a činel na její první jedničce
+         * dělají z osmi taktů jednu větu, ne osm stejných taktů. Po dobu
+         * nájezdu mlčí činelka i virbl, aby byl slyšet.
+         */
+        const fill = tier >= 2 && bar === BARS - 1 && inBar >= 12;
 
-        // ---- basa: dusané šestnáctiny přes měkké oříznutí ----
-        if (tier >= 1 || inBar % 2 === 0) {
+        if (inBar % (fast ? 8 : 4) === 0) this.#kick(when, {top: 200, bottom: 36, dur: 0.13, gain: 0.72});
+        if (tier >= 1 && !fast && inBar % 8 === 3) this.#kick(when, {top: 190, bottom: 36, dur: 0.1, gain: 0.5});
+        if (tier >= 2 && !fast && inBar % 8 === 7) this.#kick(when, {top: 190, bottom: 36, dur: 0.1, gain: 0.5});
+        if (tier >= 1 && !fast && !fill && inBar % 8 === 4) this.#snare(when, true);
+        if (fill && !fast) this.#tom(when, [200, 168, 142, 118][inBar - 12]);
+        if (tier >= 2 && !fast && bar === 0 && inBar === 0) this.#crash(when);
+
+        // Hi-hat drží osminky ve všech tempech – na rychlém levelu je to jediné,
+        // co odměřuje takt. Na konci taktu dvě šestnáctiny jako přítlak do další
+        // jedničky; v rychlém tempu by z nich byl jen sykot.
+        if (tier >= 1 && !fill && (inBar % 2 === 0 || (tier >= 2 && !fast && inBar >= 13))) {
+            this.#hat(when, inBar === 14);
+        }
+
+        // ---- basa: dusané šestnáctiny přes měkké oříznutí, na rychlém levelu čtvrtky ----
+        if (inBar % (fast ? 4 : 2) === 0 || (tier >= 1 && !fast)) {
             this.#bassGrowl(root, t.stepDur * 0.9, when);
+        }
+
+        /*
+         * ---- doprovodná kytara: kvintakordy z aparátu ----
+         * Rytmus drží `FIRE_FIGURE`: dusané akordy na synkopu a na čtvrtou dobu
+         * běh po strunách do dalšího taktu. Během nájezdu kytara mlčí.
+         *
+         * Figura hraje ve všech stupních stejně; sílu přidává otevírající se
+         * filtr a zbytek kapely, ne hustší kytara (na 205 % by z houstnutí byl
+         * bzučák). Na rychlém levelu z ní zbude jen akord na jedničku – v tom
+         * tempu by se synkopy i běh slily.
+         */
+        const chord = t.profile.chord.map(n => root * 2 * semitone(n));
+        const string = fast ? undefined : FIRE_FIGURE.run[inBar];
+        if (!fill && (!fast || inBar === 0) && FIRE_FIGURE.chugs.includes(inBar)) {
+            this.#guitar(chord, t.stepDur * 1.05, 0.115, when, {mute: true});
+        } else if (!fill && string !== undefined) {
+            this.#guitar([chord[string]], t.stepDur * 1.05, 0.115, when);
         }
 
         // ---- riff: pila s krátkým klesnutím, jako kytara ----
         const note = t.melody[step];
-        if (note !== null && (tier >= 1 || inBar % 4 === 0)) {
+        if (note !== null && (tier >= 1 || inBar % 4 === 0) && (!fast || inBar % 2 === 0)) {
             this.#tone({
                 freq: root * 4 * semitone(note), freqTo: root * 4 * semitone(note) * 0.985,
                 type: 'sawtooth', dur: t.stepDur * 1.1,
@@ -627,22 +722,21 @@ export class Sound {
 
         // ---- údery: kvintakord bez tercie, odpověď o půltón výš (nejtemnější krok) ----
         if (tier >= 1 && bar % 2 === 0) {
-            if (inBar === 0) this.#powerStab(root, t.stepDur * 3, 0.07, when);
+            if (inBar === 0) this.#powerStab(root, t.stepDur * 3, 0.045, when);
             if (tier >= 2 && inBar === 10) {
-                this.#powerStab(root * semitone(1), t.stepDur * 1.6, 0.05, when);
+                this.#powerStab(root * semitone(1), t.stepDur * 1.6, 0.033, when);
             }
         }
 
         // ---- uhlíky: nepravidelné prasknutí, které se s taktem nepotkává ----
         if (tier >= 1 && step % 13 === 5) this.#crackle(when);
 
-        // ---- arpeggio až v nejvyšším stupni: klesající šestnáctiny ----
-        if (tier >= 2 && inBar % 2 === 0) {
-            const arpNote = t.profile.arp[Math.floor(inBar / 2) % t.profile.arp.length];
-            this.#tone({
-                freq: root * 8 * semitone(arpNote), type: 'sawtooth',
-                dur: t.stepDur * 0.7, gain: 0.045, when, dest: this.musicGain,
-            });
+        // ---- druhá kytara až v nejvyšším stupni: klesající lick vysoko nad riffem ----
+        // Na rychlém levelu jde po čtvrtkách: tvar licku zůstane, jen se neslije
+        const every = fast ? 4 : 2;
+        if (tier >= 2 && inBar % every === 0) {
+            const arpNote = t.profile.arp[Math.floor(inBar / every) % t.profile.arp.length];
+            this.#guitar([root * 8 * semitone(arpNote)], t.stepDur * 0.9, 0.05, when);
         }
     }
 
@@ -1356,33 +1450,89 @@ export class Sound {
         });
     }
 
-    /** Ohnivý úder: kvintakord bez tercie přes měkké oříznutí – hrubá síla. */
-    #powerStab(root, dur, gain, when) {
+    /**
+     * Elektrická kytara přes nakopnutý aparát: struny → **jedno** zkreslení →
+     * reproduktorová bedna. To, že jdou všechny tóny do téhož zkreslení, je na
+     * tom podstatné – teprve tím, že se v něm potkají, vznikne ten drásavý
+     * souzvuk kvintakordu. Kdyby se každý tón zkreslil zvlášť a sečetl až
+     * potom, zněly by spolu jako varhany.
+     *
+     * `mute` je dlaň položená na struny u kobylky: tón se utne a ztmavne, čímž
+     * z akordů vznikne dusaný chod.
+     */
+    #guitar(freqs, dur, gain, when, {mute = false} = {}) {
+        const strings = this.ctx.createGain();
+        const drive = this.ctx.createGain();
         const shaper = this.ctx.createWaveShaper();
-        const filter = this.ctx.createBiquadFilter();
+        const tone = this.ctx.createBiquadFilter();
         const env = this.ctx.createGain();
 
-        shaper.curve = DIST_CURVE;
-        filter.type = 'lowpass';
-        filter.Q.value = 2;
-        filter.frequency.setValueAtTime(4200, when);
-        filter.frequency.exponentialRampToValueAtTime(700, when + dur);
+        strings.gain.value = 1 / freqs.length;  // hmat nesmí být hlasitější jen tím, že má víc strun
+        drive.gain.value = mute ? 3.4 : 4.5;    // „gain“ na aparátu: čím víc, tím špinavěji
+        shaper.curve = AMP_CURVE;
 
+        tone.type = 'lowpass';
+        tone.Q.value = 0.9;
+        // Dlaň barvu s dozníváním stahuje, volná struna zůstane otevřená
+        tone.frequency.setValueAtTime(mute ? 2600 : 4600, when);
+        if (mute) tone.frequency.exponentialRampToValueAtTime(1100, when + dur);
+
+        // Zkreslený tón drží skoro celou délku a pustí se až na konci
         env.gain.setValueAtTime(0.0001, when);
-        env.gain.exponentialRampToValueAtTime(gain, when + 0.006);
+        env.gain.exponentialRampToValueAtTime(gain, when + 0.004);
+        env.gain.setValueAtTime(gain, when + dur * (mute ? 0.45 : 0.75));
         env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
 
-        shaper.connect(filter).connect(env).connect(this.musicGain);
+        strings.connect(drive).connect(shaper).connect(tone).connect(this.#cabinet(env));
+        env.connect(this.musicGain);
 
-        this.track.profile.chord.forEach((note, i) => {
+        freqs.forEach((freq, i) => {
             const osc = this.ctx.createOscillator();
             osc.type = 'sawtooth';
-            osc.frequency.value = root * 2 * semitone(note);
-            osc.detune.value = [-10, 0, 10][i % 3];
-            osc.connect(shaper);
+            osc.frequency.value = freq;
+            osc.detune.value = [0, 7, -7, 11][i % 4];   // struny nejsou nikdy naladěné úplně přesně
+            osc.connect(strings);
             osc.start(when);
             osc.stop(when + dur + 0.02);
         });
+    }
+
+    /**
+     * Reproduktorová bedna kytarového aparátu. Zkreslená pila je sama o sobě
+     * bzučák: teprve když se z ní ořízne spodek, vyzdvihne střed kolem 2 kHz
+     * a nad 5 kHz utne sykot, zní jako kytara v kombu. Horní propust zároveň
+     * odvádí stejnosměrnou složku z nesouměrné `AMP_CURVE`.
+     *
+     * Vrací **vstup** řetězu, výstup je rovnou zapojený do `dest`.
+     */
+    #cabinet(dest) {
+        const cut = this.ctx.createBiquadFilter();
+        const body = this.ctx.createBiquadFilter();
+        const air = this.ctx.createBiquadFilter();
+
+        cut.type = 'highpass';
+        cut.frequency.value = 85;
+        body.type = 'peaking';
+        body.frequency.value = 2100;
+        body.Q.value = 1.1;
+        body.gain.value = 7;
+        air.type = 'lowpass';
+        air.frequency.value = 5200;
+        air.Q.value = 0.9;
+
+        cut.connect(body).connect(air).connect(dest);
+        return cut;
+    }
+
+    /**
+     * Ohnivý úder: kvintakord bez tercie ze stejného aparátu jako doprovod
+     * (`#guitar`), ale **o oktávu výš** – zní jako druhá kytara, která se do
+     * jedničky opře, ne jako zesílený doprovod. Kdyby hrál ve stejné poloze,
+     * jen by figuru zdvojil a v mixu by se ztratil.
+     */
+    #powerStab(root, dur, gain, when) {
+        this.#guitar(this.track.profile.chord.map(note => root * 4 * semitone(note)),
+                     dur, gain, when);
     }
 
     /**
@@ -1527,6 +1677,14 @@ export class Sound {
                      when, freq: 1200, dest: this.musicGain});
         this.#tone({freq: 220, freqTo: 130, type: 'triangle', dur: 0.09,
                     gain: 0.16, when, dest: this.musicGain});
+    }
+
+    /** Tom: krátký sešup s dřevěným tělem – z něj se skládá nájezd na konci smyčky. */
+    #tom(when, freq) {
+        this.#tone({freq, freqTo: freq * 0.6, type: 'sine', dur: 0.2, gain: 0.3,
+                    when, dest: this.musicGain});
+        this.#noise({dur: 0.06, gain: 0.05, when, type: 'lowpass', freq: 1200,
+                     dest: this.musicGain});
     }
 
     #hat(when, open) {

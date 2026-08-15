@@ -5,7 +5,8 @@ import {SCALE} from "../audio.js";
 /**
  * Sopečná sloj. Hroty ze země jsou plameny, ze stropu visí malé sopky, pod
  * mapou teče lávová řeka, od ní stoupají jiskry a celý hotový obraz se ještě
- * rozvlní horkým vzduchem. Hudba dusá dvojkopákem pod chraplavým riffem.
+ * rozvlní horkým vzduchem. Hudba dusá dvojkopákem pod chraplavým riffem
+ * a kvintakordy elektrické kytary.
  */
 export class Fire extends Theme
 {
@@ -239,7 +240,8 @@ export class Fire extends Theme
         ctx.globalAlpha = 1;
     }
 
-    // Sopečná sloj – chraplavá basa, dvojkopák, opakovaný riff a uhlíky v pozadí
+    // Sopečná sloj – chraplavá basa, dvojkopák, kytarové kvintakordy, opakovaný
+    // riff a uhlíky v pozadí
     audio() {
         return {
             arrange: 'fire',
@@ -256,8 +258,11 @@ export class Fire extends Theme
             chord: [0, 7, 12],          // kvintakord bez tercie – hrubá síla
             arp: [12, 8, 7, 3],
             cutoff: [1200, 2600, 5200],
-            gain: [0.50, 0.64, 0.78],
-            leadGain: 0.45,
+            // O 1 dB níž, než bylo před přidáním kytary: aparát sám o sobě
+            // přidal do součtu tolik, že by špička ohně nenechala rezervu
+            // efektům (změřeno `tools/mixtest.mjs`)
+            gain: [0.44, 0.57, 0.70],
+            leadGain: 0.40,
             delay: {steps: 2, feedback: 0.18, mix: 0.25},   // těsná ozvěna, ať se riff nerozmaže
         };
     }

@@ -352,14 +352,41 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
   tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` western na dvě doby (cval kopyt, „bum-ča“
+  basou, opakovaným riffem a kvintakordy elektrické kytary, `desert` western
+  na dvě doby (cval kopyt, „bum-ča“
   basa s kytarou, tremolová kytara, hvízdání, bič a trubka), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
   Nástroje jsou sdílené
-  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#twang`, `#whistle`,
+  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#guitar`, `#twang`, `#whistle`,
   `#pluck`, `#guitarron`, `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`,
   `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
+- **Elektrická kytara (`#guitar`) jde celá do jednoho zkreslení a pak do bedny
+  (`#cabinet`).** Obojí je podstatné: kdyby se každý tón kvintakordu zkreslil
+  zvlášť a sečetl až potom, zněly by spolu jako varhany – ten drásavý souzvuk
+  vzniká právě tím, že se struny potkají uvnitř zkreslení. A zkreslená pila je
+  bez bedny bzučák; teprve řez pod 85 Hz, zdvih kolem 2 kHz a strop nad 5 kHz
+  z ní udělají kytaru v kombu. Křivka aparátu (`AMP_CURVE`) je **nesouměrná**
+  kvůli sudým harmonickým (souměrné oříznutí dává čtvercovou vlnu). V ohni
+  hraje kytara kvintakordy v synkopované figuře (`FIRE_FIGURE`): dusané akordy
+  (`mute`) na jedničku, hned za ni a za třetí dobu, a na čtvrtou dobu běh po
+  strunách, který vtáhne do dalšího taktu. Druhá doba zůstává prázdná schválně –
+  tam je slyšet riff. Figura je v každém taktu stejná a **nehoustne se stupni** –
+  sílu přidává otevírající se filtr a zbytek kapely; na 205 % (level 19) by
+  z hustšího chodu byl bzučák. Kytary jsou
+  v ohni tři a **každá v jiné poloze**, jinak by si lezly do cesty: doprovod
+  drží figuru uprostřed, úder (`#powerStab`) se opře do jedničky o oktávu výš
+  a v nejvyšším stupni nad tím jede klesající lick.
+- **Rychlé levely se v aranžmá prořídí, ne zrychlí.** Tempo se počítá z rychlosti
+  levelu, takže rychlé kolo má stejný počet šestnáctin jako pomalé, ale padají
+  skoro dvakrát hustěji – co na 118 % zní jako chod, je na 205 % plocha.
+  `#playStep` proto předá aranžmá příznak `fast` (délka kroku pod `FAST_STEP`)
+  a to si podle něj zahraje řidčeji. Oheň se v něm **hraje na polovinu**: kopák
+  drží půlové doby, basa čtvrtky, riff a lick osminky, kytara zahraje jen akord
+  na jedničku a všechno, co takt drobí (dvojkopák, virbl, nájezd, činel, běh po
+  strunách), vypadne. Rychlá kola tím vyjdou vzdušná, ne hustší. Ostatní témata
+  si `fast` zatím neberou – když bude některé na rychlém levelu drnčet, je to
+  první, po čem sáhnout.
 - **Džungli drží rytmus, ne harmonie, a hraje ji celý bubnový kruh.** Zvonovou
   linku 3–3–2 (`BELL`) drží kovový zvonec `#gankogui` a opírá se o ni basa
   i balafonové ostinato; **djembe (`#djembe`) ale hrají do mezer mezi jejími
