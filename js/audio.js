@@ -16,12 +16,15 @@
  * **Každé téma prostředí má vlastní motiv** (`THEMES`): jinou stupnici, harmonii,
  * tempo, nástroje i rytmus. Beztémové levely drží temné synthwave, led hraje
  * pomalé zvonky nad ležícím podkladem, oheň dusá chraplavým riffem, poušť
- * zní jako mexické mariachi – guitarrón, odsekávaná kytara a trubky v terciích –,
+ * zní jako mexické mariachi – guitarrón, vihuela a dvojice trubek v terciích –,
  * matematický svět běží minimalisticky (metronom, skleněné tóny, souměrné
  * stupnice a melodická buňka, která se proti taktu posouvá) a džungle je africký
  * bubnový kruh: kovový zvonec drží linku, djembe hrají do jejích mezer, balafon
  * na to skládá ostinato a nad vším zpívá sbor hlasů.
- * Dramatický ráz zůstává všude – mění se barva, ne nálada.
+ *
+ * Dramatický ráz drží všechna témata kromě pouště – **mariachi je schválně
+ * veselé**, hraje v dur na I–IV–V a nesnaží se o napětí. Mollová kadence
+ * s clave a palmas z něj dělala obecnou „latinu“; tady má znít Mexiko.
  *
  * V rámci tématu má každý level vlastní stupnici, harmonii i základní tón podle
  * svého čísla a tempo podle své rychlosti; melodie se losuje ze seedu podle
@@ -43,7 +46,8 @@ const TIERS = [0.28, 0.58];
 // O kolik dopředu se plánují tóny (s) – kryje výkyvy časovače
 const LOOKAHEAD = 0.15;
 
-// Stupnice jako půltóny od základního tónu. Všechny mollové – kvůli atmosféře.
+// Stupnice jako půltóny od základního tónu. Až na poušť samé mollové – kvůli
+// atmosféře; mariachi je jediné téma, které má znít vesele, a to bez dur nejde.
 const SCALE = {
     pentatonic: [0, 3, 5, 7, 10],           // mollová pentatonika
     aeolian: [0, 2, 3, 5, 7, 8, 10],        // přirozená moll
@@ -57,6 +61,9 @@ const SCALE = {
     hijaz: [0, 1, 4, 5, 7, 8, 10],          // frygická dur – zvětšená sekunda nad základem
     wholeTone: [0, 2, 4, 6, 8, 10],         // celotónová – souměrná, bez těžiště
     octatonic: [0, 2, 3, 5, 6, 8, 9, 11],   // zmenšená – opakuje se po malých terciích
+    major: [0, 2, 4, 5, 7, 9, 11],          // durová – ranchera se hraje v dur
+    majorPenta: [0, 2, 4, 7, 9],            // durová pentatonika – bez půltónů
+    majorHexa: [0, 2, 4, 7, 9, 11],         // durová bez kvarty – nikdy se netluče s dominantou
 };
 
 /**
@@ -137,27 +144,38 @@ const THEMES = {
         delay: {steps: 2, feedback: 0.18, mix: 0.25},   // těsná ozvěna, ať se riff nerozmaže
     },
 
-    // Poušť – mexické mariachi: guitarrón, odsekávaná kytara a trubky v terciích
+    /**
+     * Poušť – mexické mariachi, jak se hraje na náměstí: guitarrón, vihuela,
+     * dvojice trubek v terciích a housle. **Jediné téma ve hře, které stojí
+     * v dur a nemá být dramatické** – ranchera je veselá, a mollová kadence
+     * z ní dělala něco mezi flamencem a filmovou hudbou.
+     *
+     * Harmonie je proto I–IV–V (0–5–7 půltónů) a nic víc; mollová šestka ani
+     * snížená sedmička sem nepatří.
+     */
     desert: {
         arrange: 'desert',
         melody: 'mariachi',
-        bpm: 108,
-        scales: [SCALE.pentatonic, SCALE.harmonic, SCALE.aeolian, SCALE.dorian],
-        // Andaluská kadence (i–VII–VI–V) a její obměny – páteř španělské
-        // a mexické hudby a pořád dost dramatická
+        bpm: 116,
+        scales: [SCALE.major, SCALE.majorPenta, SCALE.majorHexa, SCALE.major],
+        // Tercie druhé trubky se harmonizují po durové stupnici, i když melodie
+        // běží po pentatonice – ta některé stupně nemá a vyšla by z toho kvarta
+        harmony: SCALE.major,
         progressions: [
-            [0, 10, 8, 7, 0, 10, 8, 7],
-            [0, 0, 5, 5, 8, 8, 7, 7],
-            [0, 0, 10, 10, 8, 8, 7, 7],
-            [0, 0, 3, 3, 8, 8, 7, 0],
+            [0, 0, 7, 7, 0, 0, 5, 7],
+            [0, 0, 5, 5, 7, 7, 0, 0],
+            [0, 5, 0, 7, 0, 5, 7, 0],
+            [0, 0, 0, 7, 5, 5, 7, 0],
         ],
         roots: [2, 5, 7, 0],
-        chord: [0, 3, 7, 12],       // mollový akord kytary
-        chordMajor: [0, 4, 7, 12],  // durový pro VII, VI a V – bez nich by kadence nesedla
-        cutoff: [1800, 3400, 6000], // žestě potřebují prostor nahoře
-        gain: [0.46, 0.58, 0.72],
-        leadGain: 0.50,
-        delay: {steps: 3, feedback: 0.22, mix: 0.28},   // jen náznak ozvěny kaňonu
+        chord: [0, 4, 7, 12],           // durový akord vihuely
+        chordSeventh: [0, 4, 7, 10],    // dominantní septakord na V – motor ranchery
+        cutoff: [1900, 3600, 6400],     // žestě potřebují prostor nahoře
+        // Kapela bez bubeníka je tišší než témata s bicími – vyrovnané je to
+        // hlasitostí, ne dalším nástrojem (měří `tools/mixtest.mjs`)
+        gain: [0.56, 0.70, 0.88],
+        leadGain: 0.60,
+        delay: {steps: 3, feedback: 0.18, mix: 0.22},   // jen náznak ozvěny náměstí
     },
 
     /**
@@ -237,8 +255,20 @@ const THEMES = {
  */
 const BELL = [0, 3, 6, 8, 11, 14];
 
-// Son clave 3–2 v šestnáctinách – kostra latinskoamerického rytmu
-const CLAVE = [0, 3, 6, 10, 12];
+/**
+ * Rytmy trubkových frází mariachi v jednom taktu (šestnáctiny). Jsou to osminy
+ * s ozdobami, ne běh šestnáctin – mariachi zpívá, nehraje etudu.
+ */
+const MARIACHI_RHYTHMS = [
+    [0, 2, 4, 6, 8, 10, 12],
+    [0, 2, 4, 8, 10, 12],
+    [0, 3, 4, 6, 8, 12],
+    [4, 6, 8, 10, 12, 14],
+    [0, 2, 4, 6, 8],
+];
+
+// Rozsah trubky ve stupních stupnice – oktáva a půl nad základním tónem
+const MARIACHI_RANGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 // Křivka měkkého oříznutí pro waveshaper – dá ohnivé base a úderům chraplák
 const DIST_CURVE = (() => {
@@ -259,13 +289,13 @@ const degreeAt = (scale, i) => {
 };
 
 /**
- * Tón o tercii výš v rámci stupnice (o dva stupně). Druhá trubka v mariachi
- * hraje s první v paralelních terciích – jinak by to nebyla mariachi.
+ * Tón o tercii výš ve stupnici. Druhá trubka v mariachi hraje s první
+ * v paralelních terciích – jinak by to nebyla mariachi. Velká tercie má
+ * přednost, malá naskočí tam, kde velká do stupnice nepatří; krok o dva
+ * stupně by tady nestačil, protože v pentatonice by z něj vyšla kvarta.
  */
 function thirdAbove(scale, note) {
-    const octave = Math.floor(note / 12);
-    const index = scale.indexOf(note - octave * 12);
-    return index < 0 ? note + 3 : degreeAt(scale, index + 2) + 12 * octave;
+    return note + (scale.includes(((note + 4) % 12 + 12) % 12) ? 4 : 3);
 }
 
 // Malý deterministický generátor – melodie levelu vyjde pokaždé stejná
@@ -279,11 +309,20 @@ function rng(seed) {
     };
 }
 
+/** Kolik kroků zbývá do dalšího tónu melodie (dál než `max` nás nezajímá). */
+function stepsToNext(melody, step, max) {
+    for (let i = 1; i < max; i++) {
+        if (melody[(step + i) % melody.length] !== null) return i;
+    }
+    return max;
+}
+
 /**
- * Melodie na celou smyčku (pole půltónů nad základem, `null` = pomlka).
- * Styl řídí rytmus i tvar fráze – tím se motivy témat liší nejvíc.
+ * Melodie na celou smyčku (pole půltónů nad **základním tónem levelu**,
+ * `null` = pomlka). Styl řídí rytmus i tvar fráze – tím se motivy témat liší
+ * nejvíc. Harmonii (`prog`) potřebuje jen mariachi, které na ni váže fráze.
  */
-function buildMelody(style, scale, random) {
+function buildMelody(style, scale, random, prog) {
     const melody = new Array(PATTERN_STEPS).fill(null);
 
     switch (style) {
@@ -310,23 +349,43 @@ function buildMelody(style, scale, random) {
             break;
         }
 
-        // Poušť: zpěvné fráze trubky – osminy, kroky po stupnici a nádech mezi frázemi
-        case 'mariachi': {
-            let i = 0;
-            while (i < PATTERN_STEPS) {
-                let idx = Math.floor(random() * 3) * 2;   // fráze začíná na tónu akordu
-                const notes = 3 + Math.floor(random() * 4);
-                for (let k = 0; k < notes && i < PATTERN_STEPS; k++) {
-                    melody[i] = degreeAt(scale, idx);
-                    // krok po stupnici, občas skok o tercii; rozsah držíme kolem oktávy
-                    idx += (random() < 0.65 ? 1 : 2) * (random() < 0.5 ? 1 : -1);
-                    idx = Math.max(-2, Math.min(9, idx));
-                    i += random() < 0.25 ? 1 : 2;         // osminy, občas šestnáctinová ozdoba
-                }
-                i += 2 + Math.floor(random() * 6);        // nádech mezi frázemi
+        /**
+         * Poušť: trubkové fráze mariachi po dvou taktech – takt běhu osminek
+         * a takt, který uzavře dlouhý tón a nechá kapele nadechnout.
+         *
+         * Těžké doby a závěr fráze padají na **tóny právě znějícího akordu**
+         * (proto sem jde `prog`), mezi ně se vkládají kroky po stupnici.
+         * Bez té vazby melodie jen bloudila po stupnici a s harmonií se míjela.
+         */
+        case 'mariachi':
+            for (let bar = 0; bar < BARS; bar++) {
+                const root = prog[bar % prog.length];
+                // Stupně stupnice, na kterých leží tóny akordu. Hledají se přes
+                // půltóny, ne krokem po stupnici: pentatonika některé stupně nemá
+                const chord = [0, 4, 7].map(n => ((root + n) % 12 + 12) % 12);
+                const tones = MARIACHI_RANGE.filter(i => chord.includes(degreeAt(scale, i) % 12));
+                if (!tones.length) tones.push(0);   // pojistka pro stupnici bez tónů akordu
+                const closing = bar % 2 === 1;
+                const hits = closing
+                    ? [0, 2, 4, 8]      // závěr fráze: krátký nájezd a dlouhý tón
+                    : MARIACHI_RHYTHMS[Math.floor(random() * MARIACHI_RHYTHMS.length)];
+
+                let idx = tones[Math.floor(random() * tones.length)];
+                hits.forEach((hit, k) => {
+                    if (hit % 8 === 0 || (closing && k === hits.length - 1)) {
+                        // Nejbližší tón akordu – melodie tím sedne na harmonii
+                        idx = tones.reduce((a, b) =>
+                            Math.abs(b - idx) < Math.abs(a - idx) ? b : a);
+                    }
+                    melody[bar * STEPS_PER_BAR + hit] = degreeAt(scale, idx);
+                    // krok po stupnici, občas skok o tercii; u krajů rozsahu se
+                    // fráze otočí zpátky, ať se nezasekne na jednom tónu
+                    const dir = idx <= 1 ? 1 : idx >= 8 ? -1 : (random() < 0.55 ? 1 : -1);
+                    idx += (random() < 0.7 ? 1 : 2) * dir;
+                    idx = Math.max(0, Math.min(9, idx));
+                });
             }
             break;
-        }
 
         // Matematika: krátká buňka, jejíž délka je nesoudělná s taktem (5, 7
         // nebo 9 kroků proti šestnácti). Každým taktem se proti dobám posune
@@ -483,14 +542,15 @@ export class Sound {
     setTrack(levelIndex, speedPct, theme = null) {
         const profile = THEMES[theme] ?? THEMES.default;
         const scale = profile.scales[levelIndex % profile.scales.length];
+        const prog = profile.progressions[levelIndex % profile.progressions.length];
         const random = rng(levelIndex * 2654435761 + 12345);
 
         this.track = {
             root: 55 * semitone(profile.roots[levelIndex % profile.roots.length]),
-            prog: profile.progressions[levelIndex % profile.progressions.length],
+            prog,
             // Rychlejší level = svižnější hudba (tempo roste s obtížností)
             stepDur: 60 / (profile.bpm * speedPct / 100) / 4,
-            melody: buildMelody(profile.melody, scale, random),
+            melody: buildMelody(profile.melody, scale, random, prog),
             scale,
             profile,
         };
@@ -707,49 +767,53 @@ export class Sound {
     }
 
     /**
-     * Poušť: mexické mariachi. Guitarrón drží těžké doby, kytara odsekává akord
-     * na lehké („ta-dá, ta-dá“) a nad tím zpívají trubky – ve vyšším stupni
-     * dvě v paralelních terciích. Rytmus drží claves, palmas a güiro.
+     * Poušť: mexické mariachi. Guitarrón dupe základ a kvintu, vihuela mu
+     * odsekává durový akord na lehkou dobu („bum-ča, bum-ča“) a nad tím zpívají
+     * **dvě trubky v paralelních terciích** – ty jsou slyšet od prvního nástupu,
+     * protože právě podle nich se mariachi pozná. V nejvyšším stupni je zdvojí
+     * housle o oktávu níž, jak to v kapele dělá houslová sekce.
+     *
+     * **Bicí tady schválně nejsou**: mariachi hraje bez bubeníka, puls drží
+     * basa s kytarou. Dřív to táhly claves a palmas – jenže clave je kubánská
+     * a palmas španělské, takže z pouště zněla obecná „latina“, ne Mexiko.
+     * Drive místo nich dělá zapateado (dupnutí na tarimu) pod odsekávaným akordem.
      */
     #arrangeDesert({t, root, bar, inBar, step, tier, when}) {
-        // Kvalita akordu se řídí stupněm harmonie – bez durových VII, VI a V
-        // by andaluská kadence nebyla poznat
+        // Dominanta se hraje se septimou – to je motor ranchery; jinak čistě durově
         const degree = t.prog[bar % t.prog.length];
-        const shape = degree === 0 || degree === 5 ? t.profile.chord : t.profile.chordMajor;
-
-        // ---- perkuse: bombo na těžkou, claves v son clave 3–2, palmas s kytarou ----
-        if (inBar === 0 || inBar === 8) this.#kick(when, {top: 150, bottom: 48, dur: 0.2, gain: 0.5});
-        if (tier >= 1 && CLAVE.includes(inBar)) this.#clave(when);
-        if (tier >= 1 && (inBar === 4 || inBar === 12)) this.#clap(when);
-        if (tier >= 2 && inBar % 4 === 2) this.#guiro(when, t.stepDur * 1.4);
+        const shape = degree === 7 ? t.profile.chordSeventh : t.profile.chord;
 
         // ---- guitarrón: základ na jedničku, kvinta na trojku ----
-        if (inBar === 0) this.#guitarron(root, t.stepDur * 3, 0.22, when);
-        if (inBar === 8) this.#guitarron(root * 1.5, t.stepDur * 3, 0.19, when);
-        if (tier >= 2 && inBar === 14) this.#guitarron(root * 2, t.stepDur * 1.5, 0.13, when);
+        if (inBar === 0) this.#guitarron(root, t.stepDur * 3.2, 0.24, when);
+        if (inBar === 8) this.#guitarron(root * 1.5, t.stepDur * 3.2, 0.2, when);
+        // Před změnou akordu se basa rozeběhne k jeho základu zezdola –
+        // tenhle krátký nájezd dělá guitarrón pořád a drží kapelu pohromadě
+        if (tier >= 1 && inBar === 14) {
+            const next = t.prog[(bar + 1) % t.prog.length];
+            this.#guitarron(t.root * semitone(next - 1), t.stepDur * 1.4, 0.15, when);
+        }
 
-        // ---- kytara: sekaný akord na lehkou dobu, jediná plná harmonie ve skladbě ----
+        // ---- vihuela: sekaný akord na lehkou dobu, jediná plná harmonie ve skladbě ----
         if (inBar === 4 || inBar === 12) {
-            this.#strum(root, shape, t.stepDur * 2.4, tier >= 1 ? 0.1 : 0.075, when, 0.02);
+            this.#strum(root, shape, t.stepDur * 2.2, tier >= 1 ? 0.1 : 0.075, when, 0.018);
+            if (tier >= 1) this.#stomp(when, true);
         }
-        // Rasgueado: rychlé přiťuknutí nahoru mezi doby
+        // Rasgueado: rychlé přiťuknutí mezi doby, ať mánico nešlape na místě
         if (tier >= 2 && (inBar === 6 || inBar === 14)) {
-            this.#strum(root, shape, t.stepDur * 1.1, 0.05, when, 0.012);
+            this.#strum(root, shape, t.stepDur * 1.1, 0.05, when, 0.01);
+            this.#stomp(when, false);
         }
 
-        // ---- trubky ----
-        let note = t.melody[step];
+        // ---- trubky: melodie se drží tóniny, harmonie se pod ní mění ----
+        const note = t.melody[step];
         if (note !== null && (tier >= 1 || bar % 2 === 0)) {
-            // Nad durovou dominantou se malá septima zvedá na citlivý tón,
-            // jinak by se melodie s akordem tloukla o půltón
-            if (degree === 7 && (note % 12 + 12) % 12 === 10) note += 1;
-
-            const dur = t.stepDur * 1.8;
-            this.#trumpet(root * 4 * semitone(note), dur, tier >= 1 ? 0.11 : 0.07, when);
-            // Druhá trubka nastoupí až v nejvyšším stupni – tercie nad první
-            if (tier >= 2) {
-                this.#trumpet(root * 4 * semitone(thirdAbove(t.scale, note)), dur, 0.07, when + 0.008);
-            }
+            // Délku určí mezera do dalšího tónu: běh osminek odsekává, závěr
+            // fráze zůstane ležet – bez toho zněly všechny tóny stejně dlouho
+            const dur = t.stepDur * stepsToNext(t.melody, step, 8) * 0.92;
+            this.#trumpet(t.root * 4 * semitone(note), dur, tier >= 1 ? 0.1 : 0.075, when);
+            this.#trumpet(t.root * 4 * semitone(thirdAbove(t.profile.harmony, note)), dur,
+                          tier >= 1 ? 0.07 : 0.05, when + 0.01);
+            if (tier >= 2) this.#violin(t.root * 2 * semitone(note), dur, 0.06, when);
         }
     }
 
@@ -1104,6 +1168,56 @@ export class Sound {
     }
 
     /**
+     * Houslová sekce mariachi. V kapele hraje houslistů víc naráz, proto jsou
+     * pily dvě a každá jinak rozladěná – z toho je ta šířka. Tón nabíhá
+     * smykem (ne úderem), tělo nástroje dělá zdůrazněné pásmo kolem 800 Hz
+     * a vibrato nastupuje až ve druhé půlce; bez toho zní housle jako pila.
+     */
+    #violin(freq, dur, gain, when) {
+        const body = this.ctx.createBiquadFilter();
+        const filter = this.ctx.createBiquadFilter();
+        const env = this.ctx.createGain();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+
+        body.type = 'peaking';
+        body.frequency.value = 800;
+        body.Q.value = 1.2;
+        body.gain.value = 6;
+
+        filter.type = 'lowpass';
+        filter.Q.value = 0.8;
+        filter.frequency.setValueAtTime(Math.min(freq * 3, 3000), when);
+        filter.frequency.linearRampToValueAtTime(Math.min(freq * 6, 6000), when + dur * 0.5);
+
+        env.gain.setValueAtTime(0.0001, when);
+        env.gain.exponentialRampToValueAtTime(gain, when + 0.06);
+        env.gain.setValueAtTime(gain, when + dur * 0.75);
+        env.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+
+        lfo.type = 'sine';
+        lfo.frequency.value = 5.6;
+        lfoGain.gain.setValueAtTime(0, when);
+        lfoGain.gain.setValueAtTime(0, when + dur * 0.4);
+        lfoGain.gain.linearRampToValueAtTime(18, when + dur);    // vibrato v centech
+        lfo.connect(lfoGain);
+        lfo.start(when);
+        lfo.stop(when + dur + 0.02);
+
+        body.connect(filter).connect(env).connect(this.leadGain);
+        for (const detune of [-6, 7]) {
+            const osc = this.ctx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = freq;
+            osc.detune.value = detune;
+            lfoGain.connect(osc.detune);
+            osc.connect(body);
+            osc.start(when);
+            osc.stop(when + dur + 0.02);
+        }
+    }
+
+    /**
      * Skleněný tón matematického světa: sinus se svou kvintou a oktávou
      * v čistých poměrech (3/2 a 2/1), měkký náběh a dlouhý dozvuk. Nemá
      * chvění ani ostrou hranu – proto zní jako skleněná harmonika, ne jako
@@ -1358,7 +1472,7 @@ export class Sound {
 
     /**
      * Kytarové drnknutí: tóny akordu těsně za sebou, jak je palec přejede.
-     * `shape` je akord (mollový nebo durový podle harmonie), `spread` rozestup
+     * `shape` je akord (durový, na dominantě se septimou), `spread` rozestup
      * strun – čím kratší, tím ostřejší přiťuknutí.
      */
     #strum(root, shape, dur, gain, when, spread) {
@@ -1501,28 +1615,17 @@ export class Sound {
         this.#noise({dur: 0.012, gain: 0.05, when, freq: 6500, dest: this.musicGain});
     }
 
-    /** Claves: suché dřevěné ťuknutí, které drží clave rytmus. */
-    #clave(when) {
-        this.#tone({freq: 2400, type: 'sine', dur: 0.045, gain: 0.2, when, dest: this.musicGain});
-        this.#tone({freq: 1150, type: 'triangle', dur: 0.03, gain: 0.1, when, dest: this.musicGain});
-    }
-
-    /** Palmas: tlesknutí ze tří šumových zrn hned za sebou, jak tleská víc rukou. */
-    #clap(when) {
-        for (const [offset, gain] of [[0, 0.11], [0.009, 0.15], [0.02, 0.09]]) {
-            this.#noise({dur: 0.025, gain, when: when + offset, type: 'bandpass',
-                         freq: 1500, q: 2.5, dest: this.musicGain});
-        }
-        this.#noise({dur: 0.11, gain: 0.045, when: when + 0.022, type: 'bandpass',
-                     freq: 1100, q: 1.5, dest: this.musicGain});
-    }
-
-    /** Güiro: škrábnutí přes rýhy – řada tiknutí se stoupajícím filtrem. */
-    #guiro(when, dur) {
-        for (let i = 0; i < 5; i++) {
-            this.#noise({dur: 0.02, gain: 0.045, when: when + i * (dur / 5),
-                         type: 'bandpass', freq: 2600 + i * 500, q: 6, dest: this.musicGain});
-        }
+    /**
+     * Zapateado: dupnutí na dřevěnou tarimu – dutá rána podlahy a klapnutí
+     * podpatku. Mariachi bubeníka nemá, tohle je jediná perkuse pouště: patou
+     * (`heel`) na doby akordu, špičkou mezi ně.
+     */
+    #stomp(when, heel) {
+        this.#tone({freq: heel ? 150 : 190, freqTo: heel ? 70 : 110, type: 'sine',
+                    dur: heel ? 0.09 : 0.05, gain: heel ? 0.3 : 0.14,
+                    when, dest: this.musicGain});
+        this.#noise({dur: heel ? 0.05 : 0.03, gain: heel ? 0.09 : 0.05, when,
+                     type: 'bandpass', freq: 2200, q: 1.6, dest: this.musicGain});
     }
 
     /**

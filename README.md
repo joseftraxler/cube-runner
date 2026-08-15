@@ -97,7 +97,7 @@ barvy, ale i nástroje a styl:
 | bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
 | ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
-| poušť            | mexické mariachi – guitarrón, odsekávaná kytara, trubky v terciích      |
+| poušť            | mexické mariachi v dur – guitarrón, vihuela, dvě trubky v terciích, housle |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
 | džungle          | africký bubnový kruh – kovový zvonec, djembe, chřestidlo, balafon a sbor hlasů |
 

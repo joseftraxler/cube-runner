@@ -288,14 +288,14 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   harmonie, základní tóny, tempo, akord, filtr, dozvuk) a k němu dvojice
   „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, odsekávaná
-  kytara, trubky v terciích, claves a palmas), `math` minimalistický běh
+  basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, vihuela,
+  dvojice trubek v terciích, housle a zapateado), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
   Nástroje jsou sdílené
-  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#pluck`, `#guitarron`,
-  `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`, `#flute`…), aranžmá
-  (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
+  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#violin`, `#pluck`,
+  `#guitarron`, `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`,
+  `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
 - **Džungli drží rytmus, ne harmonie, a hraje ji celý bubnový kruh.** Zvonovou
   linku 3–3–2 (`BELL`) drží kovový zvonec `#gankogui` a opírá se o ni basa
   i balafonové ostinato; **djembe (`#djembe`) ale hrají do mezer mezi jejími
@@ -321,19 +321,38 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   je laděný podíly celých čísel (`JUST_MINOR`), ne půltóny: proti temperovanému
   zbytku hry je ta čistota slyšet. Když sem saháš, drž se toho – jinak z toho
   bude jen další synthwave.
-- **Ležící rákosové hlasy zněly jako harmonika, ne jako prostředí.** Pouštní
-  téma je na nich stálo (drón + píšťala s vibratem a portamentem) a vybočovalo;
-  proto je nahradily drnkané a žesťové nástroje. Když do trubky (`#trumpet`)
-  saháš, drž vibrato až na druhou půlku tónu a filtr veď obálkou – jinak se
-  ta harmonika vrátí.
+- **Poušť je mariachi, a to znamená dur a veselo.** Je to **jediné téma, které
+  nemá být dramatické** – ostatní si temnou náladu drží, tady by ji nikdo
+  nechtěl. Dvě dřívější verze se o dramatičnost pokusily a obě zněly divně:
+  nejdřív ležící rákosové hlasy (drón + píšťala s vibratem a portamentem, spíš
+  harmonika než prostředí), pak mollová andaluská kadence s clave a palmas –
+  jenže clave je kubánská a palmas španělské, takže z toho byla obecná „latina“.
+  Co drží mexický ráz:
+  - **durová harmonie I–IV–V** (`progressions` v půltónech 0–5–7) a na dominantě
+    septakord (`chordSeventh`) – to je motor ranchery; moll ani snížená septima
+    sem nepatří (stupnice `major`, `majorPenta`, `majorHexa`),
+  - **mánico „bum-ča“**: guitarrón na těžkou dobu, vihuela odsekává akord
+    na lehkou,
+  - **dvě trubky v paralelních terciích** od prvního nástupu – podle nich se
+    mariachi pozná, takže je zbytečné šetřit si druhou na nejvyšší stupeň.
+    Harmonizuje se po durové stupnici (`profile.harmony`), ne krokem o dva
+    stupně: v pentatonice by z toho vyšla kvarta,
+  - **fráze vázané na harmonii**: `buildMelody` dostává `prog` a na těžké doby
+    i do závěru fráze sází tóny právě znějícího akordu. Bez toho melodie po
+    stupnici jen bloudila a s akordy se míjela,
+  - **žádné bicí**: mariachi je kapela bez bubeníka, drive dělá zapateado
+    (`#stomp`) pod odsekávaným akordem.
+  Když do trubky (`#trumpet`) saháš, drž vibrato až na druhou půlku tónu a filtr
+  veď obálkou – jinak se ta harmonika vrátí. Totéž platí pro housle (`#violin`),
+  které trubky zdvojují o oktávu níž.
 - Akord je v každém tématu jiný (`#stab`, `#swell`, `#powerStab`, `#strum`,
   `#ratioChord`, `#chantChord`), ale všude je to **jediné místo, kde zazní celá harmonie
   naráz** – basa drží jen
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
-  ležící hlas se tam zkoušel a překážel. Výjimkou je pouštní kytara: ta odsekává
-  akord na **lehkou** dobu proti guitarrónu na těžké („ta-dá“) a její kvalitu
-  (mollová/durová) řídí stupeň harmonie, jinak by andaluská kadence nebyla poznat.
+  ležící hlas se tam zkoušel a překážel. Výjimkou je pouštní vihuela: ta odsekává
+  akord na **lehkou** dobu proti guitarrónu na těžké („bum-ča“) a na dominantě
+  hraje septakord – bez něj by ranchera neměla tah.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost
