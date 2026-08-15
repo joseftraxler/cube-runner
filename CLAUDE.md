@@ -20,6 +20,7 @@ levelů se má pustit**:
 
 ```bash
 python3 tools/gen_levels.py --check   # ověří simulací, že jdou levely doběhnout
+python3 tools/gen_levels.py --verify js/levels/level18.js   # totéž pro ručně upravenou mapu
 node tools/playtest.mjs               # projde všech 20 levelů v Chromiu
 node tools/swtest.mjs                 # ověří service worker (offline vs. aktuálnost souborů)
 node tools/audiotest.mjs              # ověří, že z hry leze zvuk (analyzátor na výstupu)
@@ -247,6 +248,30 @@ Ručně upravenou mapu ale generátor **nepřepíše**: v hlavičce každého so
 otisk mapy a když nesedí na obsah, soubor se přeskočí (`--force` to vynutí).
 Takový level pak neodpovídá plánu – ověřuj ho přes
 `python3 tools/gen_levels.py --verify js/levels/levelX.js`.
+
+**Ručně doladěné jsou levely 12, 18, 19 a 20** – proti `LEVEL_PLAN` jsou těžší
+a `LEVEL_PLAN` je tedy u nich už jen historie toho, z čeho vznikly:
+dvanáctka přidala do slalomu koule na řetězu a další pilu, chodby s hroty
+zavěšenými nad hlavou a prstenec v díře v podlaze; osmnáctka a dvacítka nechávají
+podlahu na dlouhých úsecích úplně chybět a nahrazují ji řadou prstenců vedle sebe
+(kostka propast přeletí od jednoho k druhému), nad ni věší strop z hrotů
+a přidávají gravitační portály, takže se kus levelu běží po stropě;
+u devatenáctky jde jen o přesunutou minci. Z toho plyne:
+
+- **`--check` na ně nesahá** – ověřuje podobu z plánu, ne obsah souborů. Ty
+  kontroluje `--verify` (a proti opravdovému kódu hry `playtest.mjs`, který mapy
+  čte ze souborů).
+- **`--force` je zahodí** a přepíše plánovanou verzí. Nepouštěj ho, dokud nechceš
+  přesně tohle; běžné `python3 tools/gen_levels.py` je bezpečné, ty čtyři soubory
+  přeskočí.
+- `--verify` na nich trvá dlouho: level 18 má přes sto prstenců, každý z nich je
+  v každém snímku další větev prohledávání, a projít třikrát celý level plus
+  hratelnostní běh zabere kolem čtvrt hodiny (12, 19 a 20 jsou do pár minut).
+  Není to zaseknutí, jen cena za ty prstence. `--paths` (a tím i `playtest.mjs`
+  se `screenshot.mjs`) tím netrpí – hledá jednu cestu s hrubým rastrem stisků
+  a má všech 20 levelů pod minutu.
+- Úpravu plánu, která se má na těchhle levelech projevit, musíš promítnout
+  **i do souboru** – z generátoru se do nich nic nedostane.
 
 Před zápisem každý level ověří **simulací stejného pohybového modelu**: prohledáním
 najde, jestli existuje posloupnost skoků, která dojde do cíle. Kontroluje se na

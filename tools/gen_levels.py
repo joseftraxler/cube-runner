@@ -1623,6 +1623,8 @@ LEVEL_PLAN = [
            'flat4', 'pillars', 'flat4', 'parabola', 'flat4', 'series', 'flat',
            'finish']),
     # 12 – prstence a odrazové plošiny: bez nich se přes propasti nedostaneš
+    # POZOR: js/levels/level12.js je ručně doladěný (těžší) a otisk v hlavičce
+    # ho před přepsáním chrání – změna tady se do hry sama nedostane.
     (166, ['start', 'flat', 'padsaw', 'flat4', 'ringspan', 'flat4', 'spike2',
            'flat4', 'padvault', 'flat4', 'ringtrap', 'flat4', 'padsaw',
            'flat4', 'spikepair', 'flat4', 'padvault', 'flat4', 'ringspan',
@@ -1658,15 +1660,21 @@ LEVEL_PLAN = [
            'flat4', 'crocrun', 'flat4', 'crocgap', 'flat4', 'lilypads', 'flat4',
            'stiltpath', 'flat', 'finish']),
     # 18 – brána s odrazovou plošinou, padací podlaha se stropem, doskok na římsu
+    # POZOR: js/levels/level18.js je ručně doladěný (řetězy prstenců nad propastí,
+    # strop z hrotů, portály) – plán je u něj jen výchozí podoba, hraje se soubor.
     (200, ['start', 'flat', 'templegate', 'flat4', 'trapfloor', 'flat4',
            'idolgap', 'flat4', 'stairfall', 'flat4', 'trapfloor', 'flat4',
            'templegate', 'flat4', 'idolgap', 'flat', 'finish']),
     # 19 – prstence přes zeď i rokli, portál na strop, koule na řetězu
+    # POZOR: js/levels/level19.js je ručně doladěný (přesunutá mince) – chrání ho
+    # otisk v hlavičce, takže se změna tady do hry sama nedostane.
     (205, ['start', 'flat', 'ringroots', 'flat4', 'vinerings', 'flat4',
            'canopyflip', 'flat4', 'swingball', 'flat4', 'ringroots', 'flat4',
            'vinerings', 'flat', 'finish']),
     # 20 – finále hry: nejdelší a nejrychlejší kolo, od každého levelu kapitoly
     # jeden úsek a dvakrát plošina s prstencem nad obří roklí
+    # POZOR: js/levels/level20.js je ručně doladěný (patro v korunách s portály,
+    # hroty a prstenci nad hlavou) – plán je u něj jen výchozí podoba.
     (210, ['start', 'flat', 'canopy', 'flat4', 'lilypads', 'flat4', 'trapfloor',
            'flat4', 'swingball', 'flat4', 'jungleheart', 'flat4', 'idolgap',
            'flat4', 'vinerings', 'flat4', 'stiltpath', 'flat4', 'jungleheart',
