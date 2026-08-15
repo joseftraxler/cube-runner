@@ -154,6 +154,18 @@ na `http://localhost:8080`. Soubory jsou do kontejneru jen připojené pro čten
 takže se úprava projeví po obnovení stránky – přestavovat nic není potřeba.
 Jiný port nastavíš levým číslem v `ports` v `docker-compose.yml`.
 
+Pro Python příkazy (hlavně generátor úrovní) je v compose druhá služba `python`,
+takže na jejich spuštění není potřeba mít Python nainstalovaný:
+
+```bash
+docker compose run --rm python                       # ověří průchodnost úrovní (--check)
+docker compose run --rm python tools/gen_levels.py   # přegeneruje js/levels/*.js
+```
+
+Kontejner běží mimo `docker compose up` (profil `tools`) – je to jednorázový
+příkaz, ne služba. Aby přegenerované soubory nepatřily rootovi, předej mu své
+UID a GID: `UID=$(id -u) GID=$(id -g) docker compose run --rm python …`.
+
 ## Instalace (PWA)
 
 Hra je progresivní webová aplikace – z prohlížeče ji lze **nainstalovat** (na ploše
