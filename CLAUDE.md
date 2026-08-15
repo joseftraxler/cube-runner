@@ -351,13 +351,13 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
   tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` mexický son v 6/8 (guitarrón, vihuela,
-  dvojice trubek v terciích, housle a zapateado), `math` minimalistický běh
+  basou a opakovaným riffem, `desert` spaghetti western v 6/8 (cval kopyt,
+  tremolová kytara, hvízdání, bič a osamělá trubka), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
   Nástroje jsou sdílené
-  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#violin`, `#pluck`,
-  `#guitarron`, `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`,
+  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#twang`, `#whistle`,
+  `#pluck`, `#guitarron`, `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`,
   `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
 - **Džungli drží rytmus, ne harmonie, a hraje ji celý bubnový kruh.** Zvonovou
   linku 3–3–2 (`BELL`) drží kovový zvonec `#gankogui` a opírá se o ni basa
@@ -425,9 +425,9 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   naráz** – basa drží jen
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
-  ležící hlas se tam zkoušel a překážel. Výjimkou je pouštní vihuela: ta odsekává
-  akord **proti tomu členění, na které zrovna hraje guitarrón** (sesquiáltera)
-  a na dominantě hraje septakord – bez něj by son neměl tah.
+  ležící hlas se tam zkoušel a překážel. Na poušti to obstará tlumené drnknutí
+  kytary (`#strum`) na odraz doby – na dominantě dur se septimou, protože ta
+  septima je konec andaluské kadence.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost

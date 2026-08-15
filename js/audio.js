@@ -968,8 +968,9 @@ export class Sound {
     }
 
     /**
-     * Guitarrón: hluboká drnknutá struna zdvojená oktávou – přesně tak se na
-     * něj hraje a odtud má mariachi svůj dřevěný, měkký spodek.
+     * Hluboká drnknutá struna zdvojená oktávou (guitarrón). Zní dřevěně
+     * a měkce, takže na pouštní pláni drží spodek, aniž by dupala jako basa
+     * ostatních témat.
      */
     #guitarron(freq, dur, gain, when) {
         const filter = this.ctx.createBiquadFilter();
@@ -1418,8 +1419,8 @@ export class Sound {
 
     /**
      * Kytarové drnknutí: tóny akordu těsně za sebou, jak je palec přejede.
-     * `shape` je akord (durový, na dominantě se septimou), `spread` rozestup
-     * strun – čím kratší, tím ostřejší přiťuknutí.
+     * `shape` je akord (mollový, na dominantě dur se septimou), `spread`
+     * rozestup strun – čím kratší, tím ostřejší přiťuknutí.
      */
     #strum(root, shape, dur, gain, when, spread) {
         shape.forEach((note, i) => {

@@ -106,7 +106,7 @@ barvy, ale i nástroje a styl:
 | bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
 | ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
 | sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
-| poušť            | mexický son v 6/8 – guitarrón, vihuela, dvě trubky v terciích, housle a zapateado |
+| poušť            | spaghetti western – cval koně v 6/8, tremolová kytara s echem, hvízdaný nápěv, bič |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
 | džungle          | africký bubnový kruh – kovový zvonec, djembe, chřestidlo, balafon a sbor hlasů |
 
@@ -210,7 +210,7 @@ js/
 │   ├── default.js      levely bez tématu – obloha s mřížkou a synthwave
 │   ├── ice.js          Ice – krápníky, námraza, sníh, zvonky
 │   ├── fire.js         Fire – plameny, sopky, láva, horký vzduch
-│   ├── desert.js       Desert – kaktusy, supi, duny, mariachi
+│   ├── desert.js       Desert – kaktusy, supi, duny, western
 │   ├── math.js         MathTheme – operátory Δ/∇, rýsovací papír, ∮ a π
 │   └── jungle.js       Jungle – masožravé rostliny, hadi, koruny, bubnový kruh
 └── levels/
