@@ -7,7 +7,7 @@ import {buildKeyMap, actionForEvent} from "./input.js";
 import {Sound} from "./audio.js";
 import {Haptics} from "./haptics.js";
 import {themeFor} from "./themes/registry.js";
-import {noise, wrap} from "./draw.js";
+import {noise, roundRect, wrap} from "./draw.js";
 
 // Výška horního pruhu s ukazatelem postupu a statistikami (px)
 const HUD = 54;
@@ -549,7 +549,12 @@ export class Game {
         this.orbiters.forEach(o => o.draw(this.ctx, this.px(o.x), this.py(o.y), this.tile));
 
         if (this.state !== 'dying') {
-            this.player.draw(this.ctx, this.px(this.player.x), this.py(this.player.y), this.tile);
+            const cx = this.px(this.player.x);
+            const cy = this.py(this.player.y);
+            this.player.draw(this.ctx, cx, cy, this.tile);
+            // Prostředí smí kostku převléknout (v ledu je z ní dárek); sama
+            // kostka o prostředí neví, kreslí pořád stejně
+            this.theme.decorateCube(cx, cy, this.tile * CUBE, this.player.rotation);
         }
 
         this.drawParticles();
@@ -944,15 +949,4 @@ export class Game {
         ctx.font = `${Math.min(Math.max(this.tile * 0.6, 14), this.c.width / 34)}px "Courier New", monospace`;
         ctx.fillText(subtitle, this.c.width / 2, this.c.height / 2 + Math.max(this.tile * 1.2, 28));
     }
-}
-
-// Cesta zaobleného obdélníku (bez vykreslení – volající si zvolí fill/stroke)
-function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
 }

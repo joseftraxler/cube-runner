@@ -1,5 +1,6 @@
 import {Entity} from "./entity.js";
 import {CUBE, GRAVITY, JUMP_SPEED, MAX_FALL, ROT_SPEED} from "../physics.js";
+import {roundRect} from "../draw.js";
 
 const EPS = 1e-6;
 
@@ -165,15 +166,4 @@ export class Player extends Entity {
 
         ctx.restore();
     }
-}
-
-// Cesta zaobleného obdélníku (bez vykreslení – volající si zvolí fill/stroke)
-function roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
 }

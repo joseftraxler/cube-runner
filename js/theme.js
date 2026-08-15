@@ -266,6 +266,19 @@ export class Theme {
     decorateCoin(cx, cy, w, color) {
     }
 
+    /**
+     * Převlek kostky: kreslí se **přes** hotovou kostku ([cx, cy] je její střed,
+     * `size` strana v pixelech, `rotation` její otočení), takže si ji prostředí
+     * může obléknout, aniž by o něm `Player` věděl – vazba zůstává jednosměrná,
+     * kostka si řeší jen svůj pohyb a kresbu, prostředí do ní jen nahlíží.
+     *
+     * Kdo sem sáhne, musí počítat s tím, že kostka je čitelnost hry: hráč podle
+     * ní pozná, kde je a jak je otočená, takže převlek nesmí splynout s pozadím
+     * ani rozmazat obrys.
+     */
+    decorateCube(cx, cy, size, rotation) {
+    }
+
     // ---- Hudba ----
 
     /**

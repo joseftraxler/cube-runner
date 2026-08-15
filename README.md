@@ -104,8 +104,8 @@ barvy, ale i nástroje a styl:
 | Prostředí        | Jak zní                                                                 |
 |------------------|-------------------------------------------------------------------------|
 | bez tématu       | temné synthwave – kopák, rozladěné pily v base, hranatá melodie          |
-| ledová jeskyně   | poloviční tempo, zvonky s dlouhou ozvěnou, praskání ledu místo virblu    |
-| sopečná sloj     | dvojkopák, chraplavá basa na šestnáctiny, opakovaný riff a uhlíky vzadu  |
+| ledová jeskyně   | Vánoce – rolničky, zvonkohra s koledou, teplý durový akord a praskání ledu |
+| sopečná sloj     | rock – dvojkopák, chraplavá basa, kvintakordy elektrické kytary a uhlíky vzadu |
 | poušť            | western na dvě doby – cval koně, „bum-ča“ basa, tremolová kytara, hvízdání a trubka |
 | matematický svět | minimalistický běh – metronom, skleněné tóny, souzvuk v přirozeném ladění |
 | džungle          | africký bubnový kruh – kovový zvonec, djembe, chřestidlo, balafon a sbor hlasů |
@@ -208,7 +208,7 @@ js/
 ├── themes/
 │   ├── registry.js     jméno tématu z mapy → třída prostředí
 │   ├── default.js      levely bez tématu – obloha s mřížkou a synthwave
-│   ├── ice.js          Ice – krápníky, námraza, sníh, zvonky
+│   ├── ice.js          Ice – stromečky, rampouchy, námraza, sníh, koleda
 │   ├── fire.js         Fire – plameny, sopky, láva, horký vzduch
 │   ├── desert.js       Desert – kaktusy, supi, duny, western
 │   ├── math.js         MathTheme – operátory Δ/∇, rýsovací papír, ∮ a π

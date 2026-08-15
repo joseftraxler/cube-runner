@@ -51,12 +51,19 @@ o sebe.**
   `animPhase`. `Entity.draw(ctx, cx, cy, size)` je abstraktní; `Player`/`Saw`/
   `Orbiter` ji implementují a **nesahají na `this.game`** – dostanou kontext
   i pozici parametrem. Tuhle nezávislost `draw` na hře zachovej.
+- **Kostku převléká prostředí, ne kostka sama.** Když má svět vlastní podobu
+  kostky (v ledu je z ní dárek), kreslí ji `Theme.decorateCube` **přes** hotovou
+  kostku – volá to `Game.drawWorld` hned za `player.draw`. `Player` o tématu
+  pořád neví a kreslí se stejně ve všech světech; kdyby si téma bralo do ruky
+  `Player.draw`, obrátila by se vazba, na které celá hra stojí. Převlek musí
+  být **neprůhledný a čitelný**: kostka je to, podle čeho hráč pozná, kde je
+  a jak je otočený, takže nesmí splynout s pozadím.
 - **Prostředí je třída, ne podmínka.** Každé téma má vlastní soubor
   v `js/themes/` a je to potomek `Theme` (`js/theme.js`): říká o sobě odstín
   (`hue`), jestli je v něm horko (`hazy`, `hazeAmplitude`) a jak se jmenuje
   (`name`), kreslí všechno, co se tématem mění (`drawBackground`,
   `drawForeground`, `drawGroundLine`, `paintBlock`, `drawSpikeUp`/`drawSpikeDown`,
-  `decorateRing`, `decorateCoin`) a vrací motiv hudby (`audio`). `Game` si
+  `decorateRing`, `decorateCoin`, `decorateCube`) a vrací motiv hudby (`audio`). `Game` si
   prostředí drží v `this.theme` (staví ho `themeFor` v `js/themes/registry.js`)
   a **nikde se nevětví podle jména tématu** – jediné místo, kde se jméno na třídu
   převádí, je ten registr. Nová podmínka `if (theme === …)` v `game.js` znamená,
@@ -176,8 +183,9 @@ délka ~5,2 políčka při 100 %). **Když je změníš, přegeneruj a přeově�
   mezera = prázdno.
 - místo čísla jde předat `{speed, theme}`; jméno tématu si `Game` vymění za
   třídu prostředí (`js/themes/`), takže **kresba i hudba světa jsou v jednom
-  souboru**. Téma `'ice'` kreslí hroty jako modré
-  krápníky, bloky jako namrzlé a nechá v pozadí padat sníh, téma `'fire'` mění
+  souboru**. Téma `'ice'` jsou **Vánoce v ledové jeskyni**: hroty ze země jsou
+  zasněžené stromečky s hvězdou na špici, hroty ze stropu rampouchy, bloky jsou
+  namrzlé, v pozadí padá sníh a z kostky je dárek (`decorateCube`), téma `'fire'` mění
   hroty ze země v pohyblivé plameny, hroty ze stropu v malé sopky, pod mapu dá
   lávovou řeku a celý obraz rozvlní horkým vzduchem, téma `'desert'` staví místo
   hrotů ze země kaktusy, místo hrotů ze stropu poletující supy, bloky mění
@@ -350,15 +358,15 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - **Každé téma prostředí má vlastní motiv** – drží ho ale **prostředí**
   (`Theme.audio()` v `js/themes/`), ne zvuk: v `audio.js` je *jak* se hraje
   (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
-  tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
-  zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
+  tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` Vánoce
+  (rolničky, zvonkohra s koledou, teplý durový akord, praskání ledu), `fire` dvojkopák s chraplavou
   basou, opakovaným riffem a kvintakordy elektrické kytary, `desert` western
   na dvě doby (cval kopyt, „bum-ča“
   basa s kytarou, tremolová kytara, hvízdání, bič a trubka), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
   Nástroje jsou sdílené
-  stavební kameny (`#bassGrowl`, `#bell`, `#trumpet`, `#guitar`, `#twang`, `#whistle`,
+  stavební kameny (`#bassGrowl`, `#bell`, `#sleighBells`, `#trumpet`, `#guitar`, `#twang`, `#whistle`,
   `#pluck`, `#guitarron`, `#glass`, `#woodBar`, `#djembe`, `#gankogui`, `#chant`,
   `#flute`…), aranžmá (`#arrangeIce` a spol.) rozhodují jen o tom, co kdy zazní.
 - **Elektrická kytara (`#guitar`) jde celá do jednoho zkreslení a pak do bedny
@@ -377,6 +385,20 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   v ohni tři a **každá v jiné poloze**, jinak by si lezly do cesty: doprovod
   drží figuru uprostřed, úder (`#powerStab`) se opře do jedničky o oktávu výš
   a v nejvyšším stupni nad tím jede klesající lick.
+- **Nápěv se píše, negeneruje.** Poušť i led stojí na hotových dvojtaktích
+  (`WESTERN_PHRASES`, `CAROL_PHRASES`), která `writePhrases` rozepíše do formy
+  **A – A – B – závěr**; level si losuje jen to, které dva nápěvy zazní.
+  Vzniklo to z pouštní zkušenosti: náhodné tóny dají procházku po stupnici, ne
+  téma, které se dá zabroukat – a u koledy to platí dvojnásob, protože koleda
+  se pozná právě podle toho, že se dá zpívat. Fráze jsou zapsané v půltónech,
+  aby si držely tvar, a do stupnice levelu se převedou až v `writePhrases`.
+- **Led je jediné téma v dur a rolničky v něm hrají místo bicích.** Koleda musí
+  znít vlídně, takže harmonie jsou ty nejobyčejnější (I–vi–IV–V); moll by z ní
+  udělala truchlivou zimu. Dobu nese `#sleighBells` – hrst zvonečků, které
+  **nejsou navzájem naladěné** (šum kolem 4 kHz a tři sinusovky v nesoudělných
+  poměrech), protože harmonické poměry by z hrsti udělaly jeden zvon. Virbl ani
+  hi-hat k nim nepatří: v soupravě by se rolničky ztratily a z koledy by byla
+  popová písnička se zvonečky navrch.
 - **Rychlé levely se v aranžmá prořídí, ne zrychlí.** Tempo se počítá z rychlosti
   levelu, takže rychlé kolo má stejný počet šestnáctin jako pomalé, ale padají
   skoro dvakrát hustěji – co na 118 % zní jako chod, je na 205 % plocha.

@@ -16,8 +16,9 @@
  * **Každé téma prostředí má vlastní motiv** – jinou stupnici, harmonii, tempo,
  * nástroje i rytmus. Motiv si ale drží prostředí (`Theme.audio()` v `js/themes/`),
  * ne zvuk: tady je **jak se hraje** (nástroje a aranžmá), tam **co se hraje**.
- * Beztémové levely drží temné synthwave, led hraje pomalé zvonky nad ležícím
- * podkladem, oheň dusá chraplavým riffem pod kvintakordy elektrické kytary,
+ * Beztémové levely drží temné synthwave, led hraje Vánoce – rolničky
+ * a zvonkohru s koledou –, oheň dusá chraplavým riffem pod kvintakordy
+ * elektrické kytary,
  * poušť je western na dvě doby –
  * cval koně, „bum-ča“ basa, tremolová kytara a hvízdání –, matematický svět běží
  * minimalisticky (metronom, skleněné tóny, souměrné stupnice a melodická buňka,
@@ -153,6 +154,35 @@ const WESTERN_CADENCE = [
     [16, 12], [24, 10], [28, 7],
 ];
 
+/**
+ * Nápěvy koledy – **hotová dvojtaktí** ve stejném zápisu jako western
+ * ([krok, půltón nad základním tónem]), ze stejného důvodu: koleda stojí a padá
+ * na tom, že se dá zabroukat, a náhodné tóny nápěv nedají.
+ *
+ * Koleda se pozná podle toho, že jde **po stupních a po akordu** – žádné cizí
+ * tóny, žádné skoky jen tak. Rytmus je klidný (doby a osminy) a fráze se klene:
+ * nadechne se nahoru a zase sestoupí, aby se dala zazpívat na jeden dech.
+ */
+const CAROL_PHRASES = [
+    // Zvonkohra: klidný oblouk po stupních, nejzpěvnější z nápěvů
+    [[0, 4], [4, 5], [8, 7], [12, 7], [16, 9], [20, 7], [24, 5], [28, 4]],
+    // Koleda: nástup po akordu vzhůru, odpověď sestupem po stupnici
+    [[0, 0], [4, 4], [6, 7], [8, 12], [16, 11], [20, 9], [24, 7], [28, 4]],
+    // Houpavá: tón na „a“ druhé doby ji rozhoupe, pak klesá k základu
+    [[0, 7], [6, 9], [8, 7], [12, 4], [16, 5], [22, 4], [24, 2], [28, 0]],
+    // Radostná: opakovaný tón a výstup na oktávu, nejvýš ze všech
+    [[0, 7], [4, 7], [8, 9], [12, 11], [16, 12], [20, 11], [24, 7], [28, 9]],
+];
+
+/**
+ * Závěr smyčky koledy: sestup od sexty k základnímu tónu, na kterém se skladba
+ * zastaví a nechá poslední zvonek doznít. Volný konec taktu je schválně –
+ * bez ticha před opakováním by koleda neměla kde se nadechnout.
+ */
+const CAROL_CADENCE = [
+    [0, 9], [4, 7], [8, 5], [12, 4], [16, 2], [20, 4], [24, 0],
+];
+
 // Křivka měkkého oříznutí pro waveshaper – dá ohnivé base a úderům chraplák
 const DIST_CURVE = (() => {
     const size = 1024;
@@ -233,6 +263,42 @@ function rng(seed) {
     };
 }
 
+/**
+ * Rozepíše **napsané fráze** do celé smyčky ve tvaru **A – A – B – závěr**:
+ * nápěv se zahraje, zopakuje nad jinou harmonií (a tím si odpoví), pak přijde
+ * druhý pro kontrast a nakonec společná kadence. Level si losuje jen to, které
+ * dva nápěvy zazní; uvnitř se nelosuje nic. Stojí na tom poušť i led – obě
+ * témata mají mít nápěv, který se dá zabroukat, a náhoda z melodie dělala
+ * běhání po stupnici, ne téma.
+ *
+ * Fráze jsou zapsané v **půltónech**, aby si držely tvar; tady se převedou na
+ * stupně stupnice levelu. Vazbu na harmonii (proto sem jde `prog`) drží posun
+ * celé fráze o základ právě znějícího akordu – po stupních a kratší cestou
+ * (`chordShift`), takže opěrné tóny padnou na akord a nápěv přitom zůstane
+ * v poloze, ve které se dá zpívat.
+ */
+function writePhrases(melody, phrases, cadence, scale, random, prog) {
+    const pick = Math.floor(random() * phrases.length);
+    // Druhý nápěv musí být jiný, jinak by kontrastní díl nekontrastoval
+    const other = (pick + 1 + Math.floor(random() * (phrases.length - 1))) % phrases.length;
+    const form = [phrases[pick], phrases[pick], phrases[other], cadence];
+
+    form.forEach((phrase, part) => {
+        let last = null;
+        for (const [at, semi] of phrase) {
+            const bar = part * 2 + Math.floor(at / STEPS_PER_BAR);
+            let idx = degreeOf(scale, semi) + chordShift(scale, prog[bar % prog.length]);
+            // Ve stupnici bez půltónů můžou dva sousední tóny nápěvu padnout na
+            // tentýž stupeň – druhý se posune dál, ať fráze nezůstane stát na místě
+            if (last && idx === last.idx && semi !== last.semi) {
+                idx += semi > last.semi ? 1 : -1;
+            }
+            melody[bar * STEPS_PER_BAR + at % STEPS_PER_BAR] = degreeAt(scale, idx);
+            last = {idx, semi};
+        }
+    });
+}
+
 /** Kolik kroků zbývá do dalšího tónu melodie (dál než `max` nás nezajímá). */
 function stepsToNext(melody, step, max) {
     for (let i = 1; i < max; i++) {
@@ -250,16 +316,6 @@ function buildMelody(style, scale, random, prog) {
     const melody = new Array(PATTERN_STEPS).fill(null);
 
     switch (style) {
-        // Led: řídké zvonky na čtvrtkách, občas o oktávu výš
-        case 'bells':
-            for (let i = 0; i < PATTERN_STEPS; i += 4) {
-                if (random() < 0.55) {
-                    const degree = degreeAt(scale, Math.floor(random() * scale.length));
-                    melody[i] = degree + (random() < 0.4 ? 12 : 0);
-                }
-            }
-            break;
-
         // Oheň: jednotaktový riff, který se pořád dokola opakuje – těžké doby drží základ
         case 'riff': {
             const riff = new Array(STEPS_PER_BAR).fill(null);
@@ -273,44 +329,20 @@ function buildMelody(style, scale, random, prog) {
             break;
         }
 
-        /**
-         * Poušť: **napsaný nápěv, ne improvizace**. Smyčka je složená ze čtyř
-         * dvojtaktí do formy **A – A – B – závěr**: nápěv se zahraje, zopakuje
-         * nad jinou harmonií (a tím si odpoví), pak přijde druhý pro kontrast
-         * a nakonec společná kadence. Level si losuje jen to, které dva nápěvy
-         * zazní; uvnitř se nelosuje nic, protože náhoda z melodie dělala
-         * běhání po stupnici, ne téma, které se dá zabroukat.
-         *
-         * Vazbu na harmonii (proto sem jde `prog`) drží posun celé fráze
-         * o základ právě znějícího akordu – po stupních stupnice a kratší
-         * cestou (`chordShift`), takže opěrné tóny nápěvu padnou na akord,
-         * a přitom zůstane v poloze, ve které se dá hvízdat.
-         */
-        case 'western': {
-            const pick = Math.floor(random() * WESTERN_PHRASES.length);
-            // Druhý nápěv musí být jiný, jinak by kontrastní díl nekontrastoval
-            const other = (pick + 1 + Math.floor(random() * (WESTERN_PHRASES.length - 1)))
-                % WESTERN_PHRASES.length;
-            const form = [WESTERN_PHRASES[pick], WESTERN_PHRASES[pick],
-                          WESTERN_PHRASES[other], WESTERN_CADENCE];
-
-            form.forEach((phrase, part) => {
-                let last = null;
-                for (const [at, semi] of phrase) {
-                    const bar = part * 2 + Math.floor(at / STEPS_PER_BAR);
-                    let idx = degreeOf(scale, semi) + chordShift(scale, prog[bar % prog.length]);
-                    // Ve stupnici bez půltónů můžou dva sousední tóny nápěvu
-                    // padnout na tentýž stupeň – druhý se posune dál, ať fráze
-                    // nezůstane stát na místě
-                    if (last && idx === last.idx && semi !== last.semi) {
-                        idx += semi > last.semi ? 1 : -1;
-                    }
-                    melody[bar * STEPS_PER_BAR + at % STEPS_PER_BAR] = degreeAt(scale, idx);
-                    last = {idx, semi};
-                }
-            });
+        // Poušť: napsaná dvojtaktí westernu, rozepsaná do formy A – A – B – závěr
+        // (jak a proč viz `writePhrases`)
+        case 'western':
+            writePhrases(melody, WESTERN_PHRASES, WESTERN_CADENCE, scale, random, prog);
             break;
-        }
+
+        /**
+         * Led: **koleda**, a tedy zase napsaný nápěv (`CAROL_PHRASES`) ve stejné
+         * formě jako western. Koleda se pozná podle toho, že se dá zazpívat –
+         * náhodné tóny by z ní udělaly cinkání zvonkohry bez písničky.
+         */
+        case 'carol':
+            writePhrases(melody, CAROL_PHRASES, CAROL_CADENCE, scale, random, prog);
+            break;
 
         // Matematika: krátká buňka, jejíž délka je nesoudělná s taktem (5, 7
         // nebo 9 kroků proti šestnácti). Každým taktem se proti dobám posune
@@ -611,23 +643,32 @@ export class Sound {
     }
 
     /**
-     * Led: poloviční tempo, ležící sinusový spodek a zvonky s dlouhou ozvěnou.
-     * Místo virblu praskne led, místo hi-hat se zatřpytí jinovatka.
+     * Led: **Vánoce v jeskyni.** Celý takt drží běh rolniček (`#sleighBells`),
+     * přes něj zpívá zvonkohra koledu (`CAROL_PHRASES`) a pod tím leží teplý
+     * durový akord. Jeskyně zůstala – led v ní praská dál a ozvěna je pořád
+     * dlouhá –, ale hraje se v ní vánočně, ne mrazivě.
+     *
+     * Rolničky jsou tu **místo bicích**: nesou dobu, takže se od nich všechno
+     * ostatní odvíjí. Kdyby k nim přibyl virbl nebo hi-hat, ztratily by se
+     * v soupravě a z koledy by byla popová písnička se zvonečky navrch.
      */
     #arrangeIce({t, root, bar, inBar, step, tier, when}) {
-        // ---- bicí: měkký kopák na jedničku, prasknutí ledu na půlce taktu ----
+        // ---- rolničky: osminky s přízvukem na dobu, v nejvyšším stupni plný třas ----
+        if (inBar % 2 === 0) this.#sleighBells(when, inBar % 4 === 0);
+        if (tier >= 2 && inBar % 2 === 1) this.#sleighBells(when, false);
+
+        // ---- měkký buben na jedničku a praskání ledu, ať je pořád poznat jeskyně ----
         if (inBar % 8 === 0) this.#kick(when, {top: 130, bottom: 38, dur: 0.3, gain: 0.5});
-        if (tier >= 1 && inBar === 8) this.#iceCrack(when);
-        if (tier >= 1 && inBar % 4 === 2) this.#shimmer(when, tier >= 2 && inBar === 14);
-        if (tier >= 2 && inBar === 11) this.#kick(when, {top: 120, bottom: 38, dur: 0.24, gain: 0.36});
+        if (tier >= 1 && bar % 2 === 1 && inBar === 12) this.#iceCrack(when);
 
-        // ---- ležící spodek: jeden tón na půl taktu, ať zůstane prostor ----
-        if (inBar % 8 === 0) this.#bassSub(root, t.stepDur * 7.5, when);
+        // ---- basa: základ na jedničku, kvinta na půlku taktu – kolébavý doprovod ----
+        if (inBar === 0) this.#bassSub(root, t.stepDur * 7, when);
+        if (tier >= 1 && inBar === 8) this.#bassSub(root * 1.5, t.stepDur * 6.5, when);
 
-        // ---- zvonky ----
+        // ---- zvonkohra: koleda ----
         const note = t.melody[step];
-        if (note !== null && (tier >= 1 || inBar % 8 === 0)) {
-            this.#bell(root * 4 * semitone(note), t.stepDur * (tier >= 1 ? 7 : 5),
+        if (note !== null && (tier >= 1 || inBar % 4 === 0)) {
+            this.#bell(root * 4 * semitone(note), t.stepDur * (tier >= 1 ? 5 : 4),
                        tier >= 1 ? 0.11 : 0.09, when);
         }
 
@@ -636,13 +677,9 @@ export class Sound {
             this.#swell(root, t.stepDur * 13, tier >= 2 ? 0.05 : 0.035, when);
         }
 
-        // ---- třpyt v nejvyšším stupni: skleněné šestnáctiny vysoko nad melodií ----
-        if (tier >= 2 && inBar % 2 === 1) {
-            const arpNote = t.profile.arp[Math.floor(inBar / 2) % t.profile.arp.length];
-            this.#tone({
-                freq: root * 8 * semitone(arpNote), type: 'sine',
-                dur: t.stepDur * 1.2, gain: 0.04, when, dest: this.musicGain,
-            });
+        // ---- velký zvon na konci fráze (až v nejvyšším stupni) ----
+        if (tier >= 2 && bar % 4 === 3 && inBar === 8) {
+            this.#bell(root, t.stepDur * 14, 0.06, when);
         }
     }
 
@@ -1692,6 +1729,31 @@ export class Sound {
                      when, freq: 7000, dest: this.musicGain});
     }
 
+    /**
+     * Rolničky: hrst malých kulatých zvonečků, kterými se zatřese. Zvuk je
+     * schválně **nesouzvučný** – zvonečky nejsou navzájem naladěné, takže z nich
+     * není akord, ale třpyt. Skládá se proto z šumu v pásmu kolem 4 kHz (to je
+     * ten kovový chřest) a tří vysokých sinusovek v nesoudělných poměrech;
+     * harmonické poměry by z hrsti zvonečků udělaly jeden zvon.
+     *
+     * `accent` je doba: hlasitější a o něco delší, aby se v běhu osminek
+     * poznalo, kde takt začíná.
+     */
+    #sleighBells(when, accent) {
+        const gain = accent ? 0.08 : 0.05;
+        const dur = accent ? 0.17 : 0.11;
+
+        this.#noise({dur, gain: gain * 0.9, when, type: 'bandpass', freq: 4200, q: 2,
+                     dest: this.musicGain});
+        this.#noise({dur: dur * 0.6, gain: gain * 0.5, when, type: 'bandpass', freq: 7400,
+                     q: 3, dest: this.musicGain});
+
+        for (const [ratio, level] of [[1, 0.5], [1.37, 0.34], [1.83, 0.24]]) {
+            this.#tone({freq: 2900 * ratio, type: 'sine', dur: dur * 0.8,
+                        gain: gain * level, when, dest: this.musicGain});
+        }
+    }
+
     /** Prasknutí ledu místo virblu: suché lupnutí a ozvěna vysokého šumu. */
     #iceCrack(when) {
         this.#noise({dur: 0.05, gain: 0.24, when, freq: 5200, dest: this.musicGain});
@@ -1699,12 +1761,6 @@ export class Sound {
                      freq: 3000, q: 6, dest: this.musicGain});
         this.#tone({freq: 1800, freqTo: 700, type: 'triangle', dur: 0.05,
                     gain: 0.1, when, dest: this.musicGain});
-    }
-
-    /** Jinovatka místo hi-hat: úzký pásek šumu hodně vysoko. */
-    #shimmer(when, long) {
-        this.#noise({dur: long ? 0.5 : 0.09, gain: long ? 0.06 : 0.05, when,
-                     type: 'bandpass', freq: 9000, q: 8, dest: this.musicGain});
     }
 
     /** Ohnivý uhlík: krátké prasknutí uprostřed pásma. */
