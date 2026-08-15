@@ -4,6 +4,12 @@
 # Python
 __pycache__/
 
+# Node.js – `npm i -D playwright` kvůli nástrojům v tools/. Do hry samotné
+# nepatří (běží bez závislostí a bez build kroku), takže se to nekomituje.
+node_modules/
+package.json
+package-lock.json
+
 # OS
 .DS_Store
 Thumbs.db
