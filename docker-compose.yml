@@ -1,0 +1,17 @@
+# Spuštění hry v Dockeru: `docker compose up` a pak http://localhost:8080
+#
+# Hra je statická (ES moduly, žádný build krok), takže stačí HTTP server –
+# přes `file://` se moduly nenačtou. Zdrojáky jsou jen připojené do kontejneru,
+# ne kopírované: změna souboru se projeví po obnovení stránky, bez přestavby.
+services:
+  game:
+    image: nginx:alpine
+    container_name: cube-runner
+    ports:
+      # Zvenku 8080, ať se to nepere s něčím na 80. Změň levé číslo, když chceš jinam.
+      - "8080:80"
+    volumes:
+      # Jen pro čtení – kontejner do repozitáře nemá co psát.
+      - ./:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
