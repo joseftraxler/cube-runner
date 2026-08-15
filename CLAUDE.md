@@ -341,13 +341,17 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
 - AudioContext smí vzniknout **až po interakci uživatele** – proto se `unlock()`
   volá z `handleAction`. Do té doby je `sound.ctx` null a `play()` nic nedělá.
 - Hudba je krokový sekvencer plánovaný dopředu (`LOOKAHEAD`) na vlastním časovači,
-  ne v herní smyčce – jinak by při propadu snímků vynechávala.
+  ne v herní smyčce – jinak by při propadu snímků vynechávala. Krok je vždycky
+  šestnáctina; **délka taktu ale patří k motivu** (`profile.stepsPerBar`,
+  výchozí 16). Poušť si říká o 12, protože son se hraje v 6/8 – takt tím pádem
+  nesmí být v aranžmá napsaný natvrdo přes `STEPS_PER_BAR`, ale bere se
+  z `track.stepsPerBar`.
 - **Každé téma prostředí má vlastní motiv** – drží ho ale **prostředí**
   (`Theme.audio()` v `js/themes/`), ne zvuk: v `audio.js` je *jak* se hraje
   (nástroje a aranžmá), v tématu *co* se hraje (stupnice, harmonie, základní
   tóny, tempo, akord, filtr, dozvuk) a k tomu dvojice „aranžmá + styl melodie“: beztémové levely temné synthwave, `ice` pomalé
   zvonky s praskáním ledu nad ležícím spodkem, `fire` dvojkopák s chraplavou
-  basou a opakovaným riffem, `desert` mexické mariachi (guitarrón, vihuela,
+  basou a opakovaným riffem, `desert` mexický son v 6/8 (guitarrón, vihuela,
   dvojice trubek v terciích, housle a zapateado), `math` minimalistický běh
   (metronom, skleněné tóny, souzvuk v přirozeném ladění), `jungle` africký
   bubnový kruh (dvouzvučný zvonec, djembe, chřestidlo, balafon a sbor hlasů).
@@ -380,38 +384,50 @@ a jestli má hrát hudba (`setMusicOn`), zvuk o hře nic neví.
   je laděný podíly celých čísel (`JUST_MINOR`), ne půltóny: proti temperovanému
   zbytku hry je ta čistota slyšet. Když sem saháš, drž se toho – jinak z toho
   bude jen další synthwave.
-- **Poušť je mariachi, a to znamená dur a veselo.** Je to **jediné téma, které
-  nemá být dramatické** – ostatní si temnou náladu drží, tady by ji nikdo
-  nechtěl. Dvě dřívější verze se o dramatičnost pokusily a obě zněly divně:
-  nejdřív ležící rákosové hlasy (drón + píšťala s vibratem a portamentem, spíš
-  harmonika než prostředí), pak mollová andaluská kadence s clave a palmas –
-  jenže clave je kubánská a palmas španělské, takže z toho byla obecná „latina“.
-  Co drží mexický ráz:
-  - **durová harmonie I–IV–V** (`progressions` v půltónech 0–5–7) a na dominantě
-    septakord (`chordSeventh`) – to je motor ranchery; moll ani snížená septima
-    sem nepatří (stupnice `major`, `majorPenta`, `majorHexa`),
-  - **mánico „bum-ča“**: guitarrón na těžkou dobu, vihuela odsekává akord
-    na lehkou,
-  - **dvě trubky v paralelních terciích** od prvního nástupu – podle nich se
-    mariachi pozná, takže je zbytečné šetřit si druhou na nejvyšší stupeň.
-    Harmonizuje se po durové stupnici (`profile.harmony`), ne krokem o dva
-    stupně: v pentatonice by z toho vyšla kvarta,
-  - **fráze vázané na harmonii**: `buildMelody` dostává `prog` a na těžké doby
-    i do závěru fráze sází tóny právě znějícího akordu. Bez toho melodie po
-    stupnici jen bloudila a s akordy se míjela,
-  - **žádné bicí**: mariachi je kapela bez bubeníka, drive dělá zapateado
-    (`#stomp`) pod odsekávaným akordem.
-  Když do trubky (`#trumpet`) saháš, drž vibrato až na druhou půlku tónu a filtr
-  veď obálkou – jinak se ta harmonika vrátí. Totéž platí pro housle (`#violin`),
-  které trubky zdvojují o oktávu níž.
+- **Poušť je spaghetti western, a hlavní nástroj je v něm prázdno.** Prostředí
+  je Sonora (kaktusy, stolové hory, supi), ne Sahara – proto jízda plání,
+  a ne orientální drón. Čtyři dřívější verze se neujaly a je z nich vidět,
+  kudy cesta nevede: ležící rákosové hlasy (drón a píšťala s vibratem, spíš
+  harmonika než prostředí), andaluská kadence s clave a palmas (clave je
+  kubánská a palmas španělské, takže z toho byla obecná „latina“), čtyřdobá
+  ranchera s generovanou melodií (správné nástroje, ale zněla jako etuda –
+  procházka po stupnici není nápěv) a norteño s harmonikou (mexické, ale
+  polka; hospoda, ne poušť). Na čem western stojí:
+  - **řídkost**: nápěvy (`WESTERN_PHRASES`) jsou z dlouhých tónů a širokých
+    intervalů, mezi nimi je ticho a dozvuk je dlouhý (`delay.mix` 0.32).
+    Prostor mezi tóny **je** ta poušť; jakmile se zaplácne během šestnáctin,
+    zbude honička jako v každé jiné hře,
+  - **6/8 cval** (`stepsPerBar: 12`): kopyta (`#hooves`) běží po osminách
+    s důrazem na obě tečkované doby a hrají **od prvního pokusu**, protože
+    v tak řídké skladbě by jinak na začátku levelu nebylo slyšet nic.
+    Je to jediné téma ve hře, které se nepočítá na čtyři,
+  - **mollová harmonie s andaluským sestupem** i–VII–VI–V (`progressions`
+    v půltónech 0–10–8–7) a na V dur se septimou (`chordSeventh`) – ta
+    klesající linka je celý western. Poušť tím **přestala být tématem bez
+    dramatu**; dur ze scenerie dělala veselou zábavu na náměstí,
+  - **napsané nápěvy, ne generované fráze**: dvojtaktí s nástupem, vrcholem
+    a závěrem plus společná kadence (`WESTERN_CADENCE`), která končí jedním
+    tónem drženým přes celý takt. Smyčka má formu A – A – B – závěr a level
+    si losuje jen to, které dva nápěvy zazní,
+  - **nápěv se za harmonií posouvá kratší cestou** (`chordShift`): kvinta
+    nahoru = kvarta dolů, takže melodie zůstane v poloze, ve které se dá
+    hvízdat. Posun vždycky nahoru ji na dominantě vystřelil o kvintu výš
+    a smyčka uskakovala z rejstříku do rejstříku,
+  - **gradace odshora**: kytara vede vždycky, hvízdání (`#whistle`) se přidá
+    v druhém stupni a trubka se sborem až ve třetím – a **jen v posledních
+    dvou taktech smyčky**, aby zůstala událostí, ne podkladem.
+  Když saháš do kytary (`#twang`), nech jí tremolo (houpání hlasitosti kolem
+  7 Hz) a krátký pokles tónu na nasazení – bez nich z ní budou varhany.
+  U hvízdání (`#whistle`) drž vibrato až na druhou půlku tónu, jinak z toho
+  je siréna.
 - Akord je v každém tématu jiný (`#stab`, `#swell`, `#powerStab`, `#strum`,
   `#ratioChord`, `#chantChord`), ale všude je to **jediné místo, kde zazní celá harmonie
   naráz** – basa drží jen
   základ a melodie je jednohlas, takže střed mixu by jinak zel prázdnotou.
   Zní jako interpunkce (jednička každého druhého taktu), ne jako podklad – delší
   ležící hlas se tam zkoušel a překážel. Výjimkou je pouštní vihuela: ta odsekává
-  akord na **lehkou** dobu proti guitarrónu na těžké („bum-ča“) a na dominantě
-  hraje septakord – bez něj by ranchera neměla tah.
+  akord **proti tomu členění, na které zrovna hraje guitarrón** (sesquiáltera)
+  a na dominantě hraje septakord – bez něj by son neměl tah.
 - Skladba graduje podle **postupu v levelu** (`setIntensity`), ne podle času.
   Gradace na čas by nebyla slyšet: kostka většinou umře dřív, než by skladba
   stihla nastoupit. Vrstvy nástrojů řídí `TIERS`, otevření filtru a hlasitost

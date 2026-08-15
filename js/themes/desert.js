@@ -7,8 +7,8 @@ import {SCALE} from "../audio.js";
  * z pískovce a v pozadí stojí duny se sluncem v prachu. Nad rozpáleným pískem
  * se obraz vlní horkým vzduchem – míň než nad ohněm, ale je to znát.
  *
- * Hudba je mexické mariachi, a je to **jediné téma ve hře, které nemá být
- * dramatické**: ranchera je veselá a hraje v dur.
+ * Hudba je spaghetti western: cval koně, tremolová kytara a hvízdaný nápěv
+ * nad prázdnou plání. Krajina je Sonora, ne Sahara – a hudba taky.
  */
 export class Desert extends Theme
 {
@@ -445,38 +445,46 @@ export class Desert extends Theme
     }
 
     /**
-     * Poušť – mexické mariachi, jak se hraje na náměstí: guitarrón, vihuela,
-     * dvojice trubek v terciích a housle. **Jediné téma ve hře, které stojí
-     * v dur a nemá být dramatické** – ranchera je veselá, a mollová kadence
-     * z ní dělala něco mezi flamencem a filmovou hudbou.
+     * Poušť – **spaghetti western**: jízda vyprahlou plání. Pod vším cválá
+     * kůň, nad ním visí tremolová kytara s dlouhým echem, nápěv hvízdá člověk
+     * a v posledních taktech nastoupí osamělá trubka se sborem.
      *
-     * Harmonie je proto I–IV–V (0–5–7 půltónů) a nic víc; mollová šestka ani
-     * snížená sedmička sem nepatří.
+     * Prostředí je Sonora (kaktusy, stolové hory, supi), ne Sahara – proto
+     * western, a ne orientální drón. Ten se tu kdysi zkoušel a zněl spíš jako
+     * harmonika než jako poušť.
+     *
+     * Hraje se v **6/8** (`stepsPerBar: 12`), protože cval je trojdobý;
+     * je to jediné téma ve hře, které se nepočítá na čtyři.
+     *
+     * Harmonie je mollová a stojí na **andaluském sestupu** i–VII–VI–V
+     * (0–10–8–7 půltónů) – ta klesající linka je celý western; durová
+     * kadence z pouště dělala veselou zábavu na náměstí.
      */
     audio() {
         return {
             arrange: 'desert',
-            melody: 'mariachi',
+            melody: 'western',
+            stepsPerBar: 12,    // 6/8 – cval má tři doby, ne čtyři
+            // Tempo se násobí rychlostí levelu, takže z tohohle základu vyjde
+            // klidná jízda na třetím levelu a trysk na šestnáctém
             bpm: 116,
-            scales: [SCALE.major, SCALE.majorPenta, SCALE.majorHexa, SCALE.major],
-            // Tercie druhé trubky se harmonizují po durové stupnici, i když melodie
-            // běží po pentatonice – ta některé stupně nemá a vyšla by z toho kvarta
-            harmony: SCALE.major,
+            scales: [SCALE.aeolian, SCALE.dorian, SCALE.harmonic, SCALE.phrygian],
             progressions: [
-                [0, 0, 7, 7, 0, 0, 5, 7],
-                [0, 0, 5, 5, 7, 7, 0, 0],
-                [0, 5, 0, 7, 0, 5, 7, 0],
-                [0, 0, 0, 7, 5, 5, 7, 0],
+                [0, 0, 10, 10, 8, 8, 7, 7],     // andaluský sestup i–VII–VI–V
+                [0, 0, 8, 8, 10, 10, 0, 0],
+                [0, 10, 0, 10, 8, 8, 7, 0],
+                [0, 0, 5, 5, 10, 10, 7, 7],
             ],
             roots: [2, 5, 7, 0],
-            chord: [0, 4, 7, 12],           // durový akord vihuely
-            chordSeventh: [0, 4, 7, 10],    // dominantní septakord na V – motor ranchery
-            cutoff: [1900, 3600, 6400],     // žestě potřebují prostor nahoře
-            // Kapela bez bubeníka je tišší než témata s bicími – vyrovnané je to
+            chord: [0, 3, 7, 12],           // mollový akord kytary
+            chordSeventh: [0, 4, 7, 10],    // dur se septimou na V – konec andaluské kadence
+            cutoff: [1500, 3000, 5600],     // suché, ne sklovité
+            // Kapela bez bicích je tišší než témata s bubny – vyrovnané je to
             // hlasitostí, ne dalším nástrojem (měří `tools/mixtest.mjs`)
             gain: [0.56, 0.70, 0.88],
-            leadGain: 0.60,
-            delay: {steps: 3, feedback: 0.18, mix: 0.22},   // jen náznak ozvěny náměstí
+            leadGain: 0.62,
+            // Dlouhá ozvěna: tón musí mít na prázdné pláni kam odletět
+            delay: {steps: 4, feedback: 0.34, mix: 0.32},
         };
     }
 }
