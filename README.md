@@ -16,7 +16,10 @@ a hudba; obtížnost drží rychlost a překážky.
 Prostřední kapitola (úrovně 11–15) běží o 60 až 85 % rychleji než první úroveň
 a čekají v ní pasti, které jednou překážkou neprojdeš: propast, přes kterou se
 dostaneš jen odrazovou plošinou a prstencem, portál nad prázdnotou, běh po stropě
-s dírami, nebo chodba, ve které strop krátí skok zrovna nad propastí.
+s dírami, nebo chodba, ve které strop krátí skok zrovna nad propastí. Dvanáctá
+úroveň k tomu přidává slalom mezi pilami a koulemi na řetězu, chodbičky s hroty
+zavěšenými těsně nad hlavou a propast, ze které tě vynese jedině prstenec u jejího
+dna.
 
 Poslední kapitola (úrovně 16–20) běží na 190 až 210 % a mění se v ní i to, o čem
 hra je: skok tam přeletí přes deset políček, takže hustota překážek už
@@ -24,6 +27,11 @@ nerozhoduje – odrazit se musíš dávno před propastí a hlídat, kam doskoč
 Čekají tam plošiny v korunách s děrami, ostrůvky s roztečí přesně na délku skoku,
 chodníček na kůlech, brána, kterou otevře jen odrazová plošina, a nakonec rokle,
 přes kterou tě přenese teprve plošina s prstencem dohromady.
+
+Osmnáctá a dvacátá úroveň jdou ještě dál: na dlouhých úsecích tam podlaha úplně
+chybí a místo ní je **řetěz prstenců**, po kterých se propast přeletí od jednoho
+k druhému, nad ním visí strop z hrotů a mezi patry se přepíná gravitačními
+portály – kus úrovně se běží po stropě, mezi hroty a prstenci nad hlavou.
 
 Zvukové efekty i hudba na pozadí se skládají přímo v prohlížeči, takže hra
 nepotřebuje žádné zvukové soubory. Na telefonu k nim přibude haptická odezva –
@@ -75,6 +83,7 @@ značka v ukazateli nahoře). Po cestě se dají sbírat **mince** za body; k do
 | Past                 | Odrazová plošina pod visícími hroty – kdo na ni šlápne, je vymrštěn do nich. Musí se přeskočit. |
 | Propast s prstencem  | Širší, než kam doletí skok: přeneseš se přes ni jen prstencem, někdy až po odrazu z plošiny. |
 | Past s prstencem     | Nad prstencem visí hroty – odrazit se z něj smíš až při klesání, ne hned ve vrcholu skoku. |
+| Řetěz prstenců       | Propast bez dna vyplněná prstenci vedle sebe – přeletí se od jednoho k druhému, dopadnout není kam. |
 | Díra ve stropě       | Při obrácené gravitaci je strop podlaha, takže dírou v něm kostka vyletí z mapy. Přeskakuje se jako propast. |
 | Vyvýšený doskok      | Plošina, na kterou se doskakuje přes propast: kdo doletí nízko, narazí do její stěny. |
 | Nízký strop nad dírou| Strop uřízne vrchol skoku, takže díru pod ním musíš přeletět kratším obloukem. |
@@ -275,8 +284,9 @@ Pořadí v poli určuje pořadí úrovní ve hře.
 
 ## Nástroje
 
-Úrovně v `js/levels/` nejsou psané ručně – skládá je generátor z hotových úseků
-(hrot, propast, plošina, strop, portál …) a **ověřuje simulací, že jdou doběhnout**:
+Většina úrovní v `js/levels/` není psaná ručně – skládá je generátor z hotových
+úseků (hrot, propast, plošina, strop, portál …) a **ověřuje simulací, že jdou
+doběhnout**:
 
 ```bash
 python3 tools/gen_levels.py           # vygeneruje js/levels/level1..20.js
@@ -288,8 +298,17 @@ otisku v hlavičce, že do souboru někdo sáhl, a **nepřepíše ho** (`--force
 vynutí). Takovou mapu si ověř zvlášť:
 
 ```bash
-python3 tools/gen_levels.py --verify js/levels/level3.js
+python3 tools/gen_levels.py --verify js/levels/level18.js
 ```
+
+Ručně doladěné jsou zrovna **úrovně 12, 18, 19 a 20** – oproti plánu generátoru
+jsou těžší (řetězy prstenců nad propastí, stropy z hrotů, koule na řetězu,
+gravitační portály navíc). Generátor je proto přeskakuje a `--check` ověřuje
+podobu z plánu, ne to, co je v souborech; hratelnost těchhle map hlídá
+`--verify` a `node tools/playtest.mjs`. `--force` by je zahodil a přepsal
+plánovanou verzí. U `--verify` počítej s časem: každý prstenec je v každém snímku
+další větev prohledávání, takže osmnáctka (přes sto prstenců) se ověřuje zhruba
+čtvrt hodiny. Playtest je rychlý, ten hledá jen jednu cestu.
 
 Simulace používá stejný pohybový model jako hra a prohledá všechny možnosti, kdy
 lze skočit. Kromě průchodnosti kontroluje i hratelnost – level musí jít doběhnout
